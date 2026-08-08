@@ -383,10 +383,11 @@ export function ChatViewer() {
         {chat && client ? (
           <>
             <ChatHeader
-              chatName={chat.chatName}
-              senders={chat.senders}
+              chatName={chatName}
+              senders={senderNames}
               meIndex={meIndex}
-              onMeChange={setMeIndex}
+              onMeChange={changeMe}
+              onSwap={swapSides}
               searchOpen={searchOpen}
               onToggleSearch={() => setSearchOpen((v) => !v)}
               onBack={closeChat}
@@ -401,7 +402,7 @@ export function ChatViewer() {
                 matchPos={matchPos}
                 onPrev={() => step(-1)}
                 onNext={() => step(1)}
-                senders={chat.senders}
+                senders={senderNames}
                 sender={sender}
                 onSender={setSender}
                 mediaOnly={mediaOnly}
@@ -413,14 +414,14 @@ export function ChatViewer() {
             <MessageList
               messages={chat.messages}
               view={view}
-              senders={chat.senders}
+              senders={senderNames}
               meIndex={meIndex}
               client={client}
               query={debounced}
               matchSet={matchSet}
               activeIndex={activeIndex}
               scrollTarget={scrollTarget}
-              onOpenMedia={(msg, url) => setLightbox({ msg, url })}
+              onOpenMedia={(msg) => openMedia(msg)}
             />
           </>
         ) : (
@@ -437,12 +438,26 @@ export function ChatViewer() {
         <ContactInfo
           chat={chat}
           client={client}
+          chatName={chatName}
+          senders={senderNames}
+          meIndex={meIndex}
+          onMeChange={changeMe}
+          onSwap={swapSides}
+          onRenameChat={(name) => persist({ chatName: name })}
+          onRenameSender={renameSender}
           onClose={() => setInfoOpen(false)}
-          onOpenMedia={(msg, url) => setLightbox({ msg, url })}
+          onOpenMedia={openMedia}
         />
       )}
 
-      <Lightbox item={lightbox} onClose={() => setLightbox(null)} />
+      <Lightbox
+        items={mediaMsgs}
+        index={lightboxIdx}
+        client={client}
+        senders={senderNames}
+        onIndex={setLightboxIdx}
+        onClose={() => setLightboxIdx(null)}
+      />
     </main>
   );
 }
