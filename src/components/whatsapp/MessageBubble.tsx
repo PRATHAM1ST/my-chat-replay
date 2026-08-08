@@ -106,19 +106,20 @@ export const MessageBubble = memo(function MessageBubble({
 
   const hasMedia = msg.kind !== "text";
   const big = hasMedia ? null : emojiScale(msg.text);
+  const mediaCard = hasMedia && ["image", "video", "sticker"].includes(msg.kind);
 
   return (
     <div className={`flex px-[5%] py-[1px] md:px-12 ${isMe ? "justify-end" : "justify-start"}`}>
       <div
-        className={`wa-bubble max-w-[85%] px-[9px] pb-[6px] pt-[6px] shadow-[0_1px_0.5px_rgba(11,20,26,0.13)] sm:max-w-[65%] ${
+        className={`wa-bubble max-w-[85%] overflow-hidden shadow-sm sm:max-w-[65%] ${
           isMe ? "bg-wa-out text-wa-out-foreground" : "bg-wa-in text-wa-in-foreground"
         } ${tail ? (isMe ? "wa-bubble-tail-out" : "wa-bubble-tail-in") : ""} ${
           isActive ? "ring-2 ring-wa-green" : ""
-        }`}
+        } ${big ? "wa-emoji-transparent overflow-visible" : ""} ${mediaCard ? "p-[3px]" : "px-[9px] pb-[6px] pt-[6px]"}`}
       >
         {showName && !isMe && (
           <p
-            className="mb-0.5 text-[12.8px] font-medium leading-[17px]"
+            className={`${mediaCard ? "px-1.5 pt-1" : ""} mb-0.5 text-[12.8px] font-medium leading-[17px]`}
             style={{ color: `var(--wa-name-${colorIdx})` }}
           >
             {senderName}
@@ -126,12 +127,12 @@ export const MessageBubble = memo(function MessageBubble({
         )}
 
         {hasMedia && (
-          <div className="mb-1">
+          <div className={mediaCard ? "overflow-hidden rounded-[5px]" : "-mx-[9px] -mt-[6px] mb-1"}>
             <MediaAttachment msg={msg} client={client} onOpen={onOpenMedia} />
           </div>
         )}
 
-        <div className="flex flex-wrap items-end justify-end gap-x-2">
+        <div className={`flex flex-wrap items-end justify-end gap-x-2 ${mediaCard && msg.text ? "px-1.5 pb-1 pt-1.5" : ""} ${mediaCard && !msg.text ? "px-1.5 pb-1" : ""}`}>
           {msg.text ? (
             <p
               className={`wa-text whitespace-pre-wrap break-words text-[14.2px] leading-[19px] ${
@@ -145,7 +146,7 @@ export const MessageBubble = memo(function MessageBubble({
               Message not included in export
             </p>
           )}
-          <span className="ml-auto flex shrink-0 items-center gap-[3px] self-end pl-1 text-[11px] leading-[15px] text-wa-meta">
+          <span className={`ml-auto flex shrink-0 items-center gap-[3px] self-end pl-1 text-[11px] leading-[15px] text-wa-meta ${big ? "rounded bg-wa-in/90 px-1 py-0.5 shadow-sm" : ""}`}>
             {msg.edited && <span className="italic">edited</span>}
             {formatTime(msg.ts)}
             {isMe ? (
