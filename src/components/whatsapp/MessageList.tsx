@@ -39,6 +39,7 @@ export function MessageList({
     estimateSize: () => 64,
     overscan: 14,
     useAnimationFrameWithResizeObserver: true,
+    useFlushSync: false,
     getItemKey: (i) => view[i] ?? i,
   });
 
