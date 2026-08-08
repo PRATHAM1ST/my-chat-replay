@@ -44,11 +44,7 @@ export function ChatLibrary({
                 className="flex min-w-0 flex-1 items-center gap-3 text-left disabled:opacity-60"
               >
                 <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-wa-teal text-wa-out-foreground">
-                  {locked ? (
-                    <KeyRound className="size-4" />
-                  ) : (
-                    <FileArchive className="size-4" />
-                  )}
+                  {locked ? <KeyRound className="size-4" /> : <FileArchive className="size-4" />}
                 </span>
                 <span className="min-w-0">
                   <span className="block truncate text-sm font-medium text-wa-panel-foreground">

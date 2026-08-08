@@ -2,6 +2,18 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { WaClient } from "@/lib/whatsapp/client";
 import { lowerBound } from "@/lib/whatsapp/format";
 import type { Msg, ParsedChat } from "@/lib/whatsapp/types";
+import {
+  clearChats,
+  entryId,
+  fileFromEntry,
+  getLastId,
+  handlePermission,
+  listChats,
+  putChat,
+  removeChat,
+  setLastId,
+  type LibraryEntry,
+} from "@/lib/whatsapp/library";
 import { ChatHeader } from "./ChatHeader";
 import { DropZone } from "./DropZone";
 import { Lightbox } from "./Lightbox";
@@ -34,6 +46,10 @@ export function ChatViewer() {
   const nonce = useRef(0);
   const [lightbox, setLightbox] = useState<{ msg: Msg; url: string } | null>(null);
 
+  const [entries, setEntries] = useState<LibraryEntry[]>([]);
+  const [needsPermission, setNeedsPermission] = useState<Set<string>>(new Set());
+  const [busyId, setBusyId] = useState<string | null>(null);
+
   // theme
   useEffect(() => {
     const stored = localStorage.getItem("wa-theme");
@@ -49,7 +65,18 @@ export function ChatViewer() {
 
   useEffect(() => () => clientRef.current?.destroy(), []);
 
-  const handleFile = useCallback(async (file: File) => {
+  const refreshLibrary = useCallback(async () => {
+    const all = await listChats();
+    const locked = new Set<string>();
+    for (const e of all) {
+      if (!e.handle || (await handlePermission(e.handle)) !== "granted") locked.add(e.id);
+    }
+    setEntries(all);
+    setNeedsPermission(locked);
+    return all;
+  }, []);
+
+  const handleFile = useCallback(async (file: File, handle?: FileSystemFileHandle) => {
     setError(null);
     setBusy(true);
     setPhase("Reading file");
@@ -68,13 +95,81 @@ export function ChatViewer() {
       setChat(parsed);
       setMeIndex(parsed.meIndex);
       setBusy(false);
+
+      const id = entryId(file.name, file.size);
+      const now = Date.now();
+      await putChat({
+        id,
+        name: file.name,
+        size: file.size,
+        addedAt: now,
+        lastOpened: now,
+        chatName: parsed.chatName,
+        msgCount: parsed.messages.length,
+        mediaCount: parsed.mediaCount,
+        ...(handle ? { handle } : {}),
+      });
+      setLastId(id);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       setBusy(false);
       client.destroy();
       clientRef.current = null;
     }
+    setBusyId(null);
   }, []);
+
+  const openEntry = useCallback(
+    async (entry: LibraryEntry) => {
+      setError(null);
+      setBusyId(entry.id);
+      const file = await fileFromEntry(entry, { request: true });
+      if (!file) {
+        setBusyId(null);
+        setError(
+          entry.handle
+            ? "Access to that file was not granted. Pick it again to continue."
+            : "This browser can't reopen files by itself — drop the archive again.",
+        );
+        void refreshLibrary();
+        return;
+      }
+      await handleFile(file, entry.handle);
+    },
+    [handleFile, refreshLibrary],
+  );
+
+  const removeEntry = useCallback(
+    async (entry: LibraryEntry) => {
+      await removeChat(entry.id);
+      void refreshLibrary();
+    },
+    [refreshLibrary],
+  );
+
+  const clearEntries = useCallback(async () => {
+    await clearChats();
+    void refreshLibrary();
+  }, [refreshLibrary]);
+
+  // Load the library and silently reopen the last chat when access is still granted.
+  const booted = useRef(false);
+  useEffect(() => {
+    if (booted.current) return;
+    booted.current = true;
+    void (async () => {
+      const all = await refreshLibrary();
+      const lastId = getLastId();
+      const last = all.find((e) => e.id === lastId);
+      if (!last?.handle) return;
+      if ((await handlePermission(last.handle)) !== "granted") return;
+      const file = await fileFromEntry(last);
+      if (file) {
+        setBusyId(last.id);
+        void handleFile(file, last.handle);
+      }
+    })();
+  }, [refreshLibrary, handleFile]);
 
   // debounce search input
   useEffect(() => {
@@ -158,10 +253,25 @@ export function ChatViewer() {
     setMediaOnly(false);
     setSearchOpen(false);
     setLightbox(null);
+    void refreshLibrary();
   };
 
   if (!chat || !clientRef.current) {
-    return <DropZone onFile={handleFile} busy={busy} phase={phase} pct={pct} error={error} />;
+    return (
+      <DropZone
+        onFile={handleFile}
+        busy={busy}
+        phase={phase}
+        pct={pct}
+        error={error}
+        entries={entries}
+        needsPermission={needsPermission}
+        busyId={busyId}
+        onOpenEntry={openEntry}
+        onRemoveEntry={removeEntry}
+        onClearEntries={clearEntries}
+      />
+    );
   }
 
   return (

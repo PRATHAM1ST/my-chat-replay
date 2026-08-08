@@ -40,8 +40,7 @@ const DB = "wa-library";
 const STORE = "chats";
 const LAST_KEY = "wa-library-last";
 
-export const supportsHandles =
-  typeof window !== "undefined" && "showOpenFilePicker" in window;
+export const supportsHandles = typeof window !== "undefined" && "showOpenFilePicker" in window;
 
 function open(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -68,7 +67,10 @@ async function tx<T>(mode: IDBTransactionMode, run: (s: IDBObjectStore) => IDBRe
 
 export async function listChats(): Promise<LibraryEntry[]> {
   try {
-    const all = await tx<LibraryEntry[]>("readonly", (s) => s.getAll() as IDBRequest<LibraryEntry[]>);
+    const all = await tx<LibraryEntry[]>(
+      "readonly",
+      (s) => s.getAll() as IDBRequest<LibraryEntry[]>,
+    );
     return all.sort((a, b) => b.lastOpened - a.lastOpened);
   } catch {
     return [];
@@ -159,15 +161,16 @@ export async function fileFromEntry(
 export async function pickArchive(): Promise<{ file: File; handle?: FileSystemFileHandle } | null> {
   if (!supportsHandles) return null;
   try {
-    const [handle] = (await window.showOpenFilePicker?.({
-      multiple: false,
-      types: [
-        {
-          description: "WhatsApp export",
-          accept: { "application/zip": [".zip"], "text/plain": [".txt"] },
-        },
-      ],
-    })) ?? [];
+    const [handle] =
+      (await window.showOpenFilePicker?.({
+        multiple: false,
+        types: [
+          {
+            description: "WhatsApp export",
+            accept: { "application/zip": [".zip"], "text/plain": [".txt"] },
+          },
+        ],
+      })) ?? [];
     if (!handle) return null;
     return { file: await handle.getFile(), handle };
   } catch {
