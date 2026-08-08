@@ -10,6 +10,19 @@
  * never the archive contents.
  */
 
+declare global {
+  interface FileSystemFileHandle {
+    queryPermission?: (d: { mode: "read" | "readwrite" }) => Promise<PermissionState>;
+    requestPermission?: (d: { mode: "read" | "readwrite" }) => Promise<PermissionState>;
+  }
+  interface Window {
+    showOpenFilePicker?: (options?: {
+      multiple?: boolean;
+      types?: { description?: string; accept: Record<string, string[]> }[];
+    }) => Promise<FileSystemFileHandle[]>;
+  }
+}
+
 export interface LibraryEntry {
   id: string;
   name: string;
@@ -113,7 +126,7 @@ type Perm = "granted" | "prompt" | "denied";
 
 export async function handlePermission(handle: FileSystemFileHandle): Promise<Perm> {
   try {
-    return (await handle.queryPermission({ mode: "read" })) as Perm;
+    return ((await handle.queryPermission?.({ mode: "read" })) ?? "prompt") as Perm;
   } catch {
     return "prompt";
   }
@@ -129,7 +142,7 @@ export async function fileFromEntry(
   let perm = await handlePermission(handle);
   if (perm !== "granted" && request) {
     try {
-      perm = (await handle.requestPermission({ mode: "read" })) as Perm;
+      perm = ((await handle.requestPermission?.({ mode: "read" })) ?? "denied") as Perm;
     } catch {
       return null;
     }
@@ -146,7 +159,7 @@ export async function fileFromEntry(
 export async function pickArchive(): Promise<{ file: File; handle?: FileSystemFileHandle } | null> {
   if (!supportsHandles) return null;
   try {
-    const [handle] = await window.showOpenFilePicker({
+    const [handle] = (await window.showOpenFilePicker?.({
       multiple: false,
       types: [
         {
@@ -154,7 +167,7 @@ export async function pickArchive(): Promise<{ file: File; handle?: FileSystemFi
           accept: { "application/zip": [".zip"], "text/plain": [".txt"] },
         },
       ],
-    });
+    })) ?? [];
     if (!handle) return null;
     return { file: await handle.getFile(), handle };
   } catch {
