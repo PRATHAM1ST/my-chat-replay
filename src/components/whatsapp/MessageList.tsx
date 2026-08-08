@@ -38,6 +38,7 @@ export function MessageList({
     getScrollElement: () => parentRef.current,
     estimateSize: () => 64,
     overscan: 14,
+    useAnimationFrameWithResizeObserver: true,
     getItemKey: (i) => view[i] ?? i,
   });
 
