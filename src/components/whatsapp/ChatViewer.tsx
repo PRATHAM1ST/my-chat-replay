@@ -14,6 +14,7 @@ import {
   setLastId,
   type LibraryEntry,
 } from "@/lib/whatsapp/library";
+import { displayNames, getPrefs, savePrefs, type ChatPrefs } from "@/lib/whatsapp/prefs";
 import { ChatHeader } from "./ChatHeader";
 import { ChatSidebar } from "./ChatSidebar";
 import { ContactInfo } from "./ContactInfo";
@@ -46,7 +47,8 @@ export function ChatViewer() {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [scrollTarget, setScrollTarget] = useState<{ row: number; nonce: number } | null>(null);
   const nonce = useRef(0);
-  const [lightbox, setLightbox] = useState<{ msg: Msg; url: string } | null>(null);
+  const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
+  const [prefs, setPrefs] = useState<ChatPrefs>({});
   const [infoOpen, setInfoOpen] = useState(false);
   const [mobileChatOpen, setMobileChatOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -101,12 +103,18 @@ export function ChatViewer() {
         if (!parsed.messages.length) {
           throw new Error("No messages could be read from this export.");
         }
+        const id = entryId(file.name, file.size);
+        const stored = getPrefs(id);
+        setPrefs(stored);
         setChat(parsed);
         setMobileChatOpen(true);
-        setMeIndex(parsed.meIndex);
+        setMeIndex(
+          stored.meIndex !== undefined && stored.meIndex < parsed.senders.length
+            ? stored.meIndex
+            : parsed.meIndex,
+        );
         setBusy(false);
 
-        const id = entryId(file.name, file.size);
         const now = Date.now();
         await putChat({
           id,
@@ -114,7 +122,7 @@ export function ChatViewer() {
           size: file.size,
           addedAt: now,
           lastOpened: now,
-          chatName: parsed.chatName,
+          chatName: stored.chatName ?? parsed.chatName,
           msgCount: parsed.messages.length,
           mediaCount: parsed.mediaCount,
           ...(handle ? { handle } : {}),
@@ -220,6 +228,72 @@ export function ChatViewer() {
 
   const matchSet = useMemo(() => new Set(Array.from(matches)), [matches]);
 
+  const senderNames = useMemo(() => (chat ? displayNames(chat.senders, prefs) : []), [chat, prefs]);
+  const chatName = prefs.chatName ?? chat?.chatName ?? "Chat";
+
+  /** every image/video/sticker in order — the carousel's playlist */
+  const mediaMsgs = useMemo(
+    () =>
+      chat
+        ? chat.messages.filter(
+            (m) => m.file && (m.kind === "image" || m.kind === "video" || m.kind === "sticker"),
+          )
+        : [],
+    [chat],
+  );
+
+  const openMedia = useCallback(
+    (msg: Msg) => {
+      const at = mediaMsgs.findIndex((m) => m.i === msg.i);
+      setLightboxIdx(at === -1 ? null : at);
+    },
+    [mediaMsgs],
+  );
+
+  const persist = useCallback(
+    (patch: ChatPrefs) => {
+      setPrefs((prev) => savePrefs(activeId, { ...prev, ...patch }));
+    },
+    [activeId],
+  );
+
+  const changeMe = useCallback(
+    (i: number) => {
+      setMeIndex(i);
+      persist({ meIndex: i });
+    },
+    [persist],
+  );
+
+  const swapSides = useCallback(() => {
+    if (!chat || chat.senders.length < 2) return;
+    const next =
+      chat.senders.length === 2 ? (meIndex === 0 ? 1 : 0) : (meIndex + 1) % chat.senders.length;
+    changeMe(next);
+  }, [chat, meIndex, changeMe]);
+
+  const renameSender = useCallback(
+    (index: number, name: string) => {
+      const original = chat?.senders[index];
+      if (!original) return;
+      setPrefs((prev) =>
+        savePrefs(activeId, { ...prev, names: { ...prev.names, [original]: name } }),
+      );
+    },
+    [chat, activeId],
+  );
+
+  const renameChat = useCallback(
+    (name: string) => {
+      persist({ chatName: name });
+      const entry = entries.find((e) => e.id === activeId);
+      if (entry) {
+        void putChat({ ...entry, chatName: name }).then(() => void refreshLibrary());
+      }
+    },
+    [persist, entries, activeId, refreshLibrary],
+  );
+
   const jumpTo = useCallback(
     (globalIndex: number) => {
       setActiveIndex(globalIndex);
@@ -267,7 +341,8 @@ export function ChatViewer() {
     setSender(null);
     setMediaOnly(false);
     setSearchOpen(false);
-    setLightbox(null);
+    setLightboxIdx(null);
+    setPrefs({});
     setInfoOpen(false);
     setMobileChatOpen(false);
     setActiveId(null);
@@ -315,10 +390,11 @@ export function ChatViewer() {
         {chat && client ? (
           <>
             <ChatHeader
-              chatName={chat.chatName}
-              senders={chat.senders}
+              chatName={chatName}
+              senders={senderNames}
               meIndex={meIndex}
-              onMeChange={setMeIndex}
+              onMeChange={changeMe}
+              onSwap={swapSides}
               searchOpen={searchOpen}
               onToggleSearch={() => setSearchOpen((v) => !v)}
               onBack={closeChat}
@@ -333,7 +409,7 @@ export function ChatViewer() {
                 matchPos={matchPos}
                 onPrev={() => step(-1)}
                 onNext={() => step(1)}
-                senders={chat.senders}
+                senders={senderNames}
                 sender={sender}
                 onSender={setSender}
                 mediaOnly={mediaOnly}
@@ -345,14 +421,14 @@ export function ChatViewer() {
             <MessageList
               messages={chat.messages}
               view={view}
-              senders={chat.senders}
+              senders={senderNames}
               meIndex={meIndex}
               client={client}
               query={debounced}
               matchSet={matchSet}
               activeIndex={activeIndex}
               scrollTarget={scrollTarget}
-              onOpenMedia={(msg, url) => setLightbox({ msg, url })}
+              onOpenMedia={(msg) => openMedia(msg)}
             />
           </>
         ) : (
@@ -369,12 +445,26 @@ export function ChatViewer() {
         <ContactInfo
           chat={chat}
           client={client}
+          chatName={chatName}
+          senders={senderNames}
+          meIndex={meIndex}
+          onMeChange={changeMe}
+          onSwap={swapSides}
+          onRenameChat={renameChat}
+          onRenameSender={renameSender}
           onClose={() => setInfoOpen(false)}
-          onOpenMedia={(msg, url) => setLightbox({ msg, url })}
+          onOpenMedia={openMedia}
         />
       )}
 
-      <Lightbox item={lightbox} onClose={() => setLightbox(null)} />
+      <Lightbox
+        items={mediaMsgs}
+        index={lightboxIdx}
+        client={client}
+        senders={senderNames}
+        onIndex={setLightboxIdx}
+        onClose={() => setLightboxIdx(null)}
+      />
     </main>
   );
 }

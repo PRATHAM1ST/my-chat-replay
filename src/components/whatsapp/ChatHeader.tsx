@@ -1,4 +1,4 @@
-import { ArrowLeft, MoreVertical, Search, X } from "lucide-react";
+import { ArrowLeft, ArrowLeftRight, MoreVertical, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface Props {
@@ -6,6 +6,7 @@ interface Props {
   senders: string[];
   meIndex: number;
   onMeChange: (i: number) => void;
+  onSwap: () => void;
   searchOpen: boolean;
   onToggleSearch: () => void;
   onBack: () => void;
@@ -17,6 +18,7 @@ export function ChatHeader({
   senders,
   meIndex,
   onMeChange,
+  onSwap,
   searchOpen,
   onToggleSearch,
   onBack,
@@ -51,6 +53,18 @@ export function ChatHeader({
       </Button>
 
       <div className="flex shrink-0 items-center">
+        {senders.length > 1 && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onSwap}
+            aria-label="Swap sender and receiver sides"
+            title={`Swap sides (you: ${senders[meIndex] ?? ""})`}
+            className="rounded-full hover:bg-wa-divider/60"
+          >
+            <ArrowLeftRight className="size-5" />
+          </Button>
+        )}
         <Button
           variant="ghost"
           size="icon"
