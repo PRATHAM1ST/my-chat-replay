@@ -82,51 +82,56 @@ export function ChatViewer() {
     return all;
   }, []);
 
-  const handleFile = useCallback(async (file: File, handle?: FileSystemFileHandle) => {
-    setError(null);
-    setBusy(true);
-    setPhase("Reading file");
-    setPct(0.02);
-    clientRef.current?.destroy();
-    const client = new WaClient();
-    clientRef.current = client;
-    try {
-      const parsed = await client.load(file, {
-        onProgress: (p, v) => {
-          setPhase(p);
-          setPct(v);
-        },
-      });
-      if (!parsed.messages.length) throw new Error("No messages could be read from this export.");
-      setChat(parsed);
-      setMobileChatOpen(true);
-      setMeIndex(parsed.meIndex);
-      setBusy(false);
+  const handleFile = useCallback(
+    async (file: File, handle?: FileSystemFileHandle) => {
+      setError(null);
+      setBusy(true);
+      setPhase("Reading file");
+      setPct(0.02);
+      clientRef.current?.destroy();
+      const client = new WaClient();
+      clientRef.current = client;
+      try {
+        const parsed = await client.load(file, {
+          onProgress: (p, v) => {
+            setPhase(p);
+            setPct(v);
+          },
+        });
+        if (!parsed.messages.length) {
+          throw new Error("No messages could be read from this export.");
+        }
+        setChat(parsed);
+        setMobileChatOpen(true);
+        setMeIndex(parsed.meIndex);
+        setBusy(false);
 
-      const id = entryId(file.name, file.size);
-      const now = Date.now();
-      await putChat({
-        id,
-        name: file.name,
-        size: file.size,
-        addedAt: now,
-        lastOpened: now,
-        chatName: parsed.chatName,
-        msgCount: parsed.messages.length,
-        mediaCount: parsed.mediaCount,
-        ...(handle ? { handle } : {}),
-      });
-      setLastId(id);
-      setActiveId(id);
-      void refreshLibrary();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-      setBusy(false);
-      client.destroy();
-      clientRef.current = null;
-    }
-    setBusyId(null);
-  }, [refreshLibrary]);
+        const id = entryId(file.name, file.size);
+        const now = Date.now();
+        await putChat({
+          id,
+          name: file.name,
+          size: file.size,
+          addedAt: now,
+          lastOpened: now,
+          chatName: parsed.chatName,
+          msgCount: parsed.messages.length,
+          mediaCount: parsed.mediaCount,
+          ...(handle ? { handle } : {}),
+        });
+        setLastId(id);
+        setActiveId(id);
+        void refreshLibrary();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+        setBusy(false);
+        client.destroy();
+        clientRef.current = null;
+      }
+      setBusyId(null);
+    },
+    [refreshLibrary],
+  );
 
   const openEntry = useCallback(
     async (entry: LibraryEntry) => {
@@ -269,7 +274,7 @@ export function ChatViewer() {
     void refreshLibrary();
   };
 
-  if (!entries.length && !chat && !busy) {
+  if (!entries.length && !chat) {
     return (
       <DropZone
         onFile={handleFile}
@@ -285,12 +290,20 @@ export function ChatViewer() {
 
   return (
     <main className="relative flex h-[100dvh] overflow-hidden bg-wa-chat">
-      <input ref={fallbackInput} type="file" accept=".zip,.txt" className="hidden" onChange={(event) => {
-        const file = event.target.files?.[0];
-        if (file) void handleFile(file);
-        event.target.value = "";
-      }} />
-      <div className={`${mobileChatOpen ? "hidden" : "flex"} h-full w-full shrink-0 md:flex md:w-auto`}>
+      <input
+        ref={fallbackInput}
+        type="file"
+        accept=".zip,.txt"
+        className="hidden"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) void handleFile(file);
+          event.target.value = "";
+        }}
+      />
+      <div
+        className={`${mobileChatOpen ? "hidden" : "flex"} h-full w-full shrink-0 md:flex md:w-auto`}
+      >
         <ChatSidebar
           entries={entries}
           activeId={activeId}
@@ -304,62 +317,69 @@ export function ChatViewer() {
         />
       </div>
 
-      <section className={`${mobileChatOpen ? "flex" : "hidden"} relative min-w-0 flex-1 flex-col bg-wa-chat md:flex`}>
-      {chat && client ? (
-        <>
-          <ChatHeader
-            chatName={chat.chatName}
-            senders={chat.senders}
-            meIndex={meIndex}
-            onMeChange={setMeIndex}
-            searchOpen={searchOpen}
-            onToggleSearch={() => setSearchOpen((v) => !v)}
-            onBack={closeChat}
-            onOpenInfo={() => setInfoOpen(true)}
-          />
+      <section
+        className={`${mobileChatOpen ? "flex" : "hidden"} relative min-w-0 flex-1 flex-col bg-wa-chat md:flex`}
+      >
+        {chat && client ? (
+          <>
+            <ChatHeader
+              chatName={chat.chatName}
+              senders={chat.senders}
+              meIndex={meIndex}
+              onMeChange={setMeIndex}
+              searchOpen={searchOpen}
+              onToggleSearch={() => setSearchOpen((v) => !v)}
+              onBack={closeChat}
+              onOpenInfo={() => setInfoOpen(true)}
+            />
 
-          {searchOpen && (
-        <SearchBar
-          query={query}
-          onQuery={setQuery}
-          matchCount={matches.length}
-          matchPos={matchPos}
-          onPrev={() => step(-1)}
-          onNext={() => step(1)}
-          senders={chat.senders}
-          sender={sender}
-          onSender={setSender}
-          mediaOnly={mediaOnly}
-          onMediaOnly={setMediaOnly}
-          onJumpDate={jumpDate}
-        />
-          )}
+            {searchOpen && (
+              <SearchBar
+                query={query}
+                onQuery={setQuery}
+                matchCount={matches.length}
+                matchPos={matchPos}
+                onPrev={() => step(-1)}
+                onNext={() => step(1)}
+                senders={chat.senders}
+                sender={sender}
+                onSender={setSender}
+                mediaOnly={mediaOnly}
+                onMediaOnly={setMediaOnly}
+                onJumpDate={jumpDate}
+              />
+            )}
 
-          <MessageList
-        messages={chat.messages}
-        view={view}
-        senders={chat.senders}
-        meIndex={meIndex}
-        client={client}
-        query={debounced}
-        matchSet={matchSet}
-        activeIndex={activeIndex}
-        scrollTarget={scrollTarget}
-        onOpenMedia={(msg, url) => setLightbox({ msg, url })}
-          />
-        </>
-      ) : (
-        <div className="flex flex-1 items-center justify-center px-6 text-center">
-          <div>
-            <h2 className="text-3xl font-light text-wa-panel-foreground">Chat Replay</h2>
-            <p className="mt-3 text-sm text-wa-meta">Select a chat from your local library</p>
+            <MessageList
+              messages={chat.messages}
+              view={view}
+              senders={chat.senders}
+              meIndex={meIndex}
+              client={client}
+              query={debounced}
+              matchSet={matchSet}
+              activeIndex={activeIndex}
+              scrollTarget={scrollTarget}
+              onOpenMedia={(msg, url) => setLightbox({ msg, url })}
+            />
+          </>
+        ) : (
+          <div className="flex flex-1 items-center justify-center px-6 text-center">
+            <div>
+              <h2 className="text-3xl font-light text-wa-panel-foreground">Chat Replay</h2>
+              <p className="mt-3 text-sm text-wa-meta">Select a chat from your local library</p>
+            </div>
           </div>
-        </div>
-      )}
+        )}
       </section>
 
       {infoOpen && chat && client && (
-        <ContactInfo chat={chat} client={client} onClose={() => setInfoOpen(false)} onOpenMedia={(msg, url) => setLightbox({ msg, url })} />
+        <ContactInfo
+          chat={chat}
+          client={client}
+          onClose={() => setInfoOpen(false)}
+          onOpenMedia={(msg, url) => setLightbox({ msg, url })}
+        />
       )}
 
       <Lightbox item={lightbox} onClose={() => setLightbox(null)} />
