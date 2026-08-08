@@ -14,6 +14,8 @@ interface Props {
   query: string;
   isMatch: boolean;
   isActive: boolean;
+  /** first bubble of a sender group — gets the corner tail */
+  tail: boolean;
   client: WaClient;
   onOpenMedia: (msg: Msg, url: string) => void;
 }
@@ -68,6 +70,17 @@ function Body({ text, query }: { text: string; query: string }) {
   return <>{out}</>;
 }
 
+const EMOJI_ONLY = /^(?:\p{Extended_Pictographic}|\p{Emoji_Component}|\uFE0F|\u200D|\s)+$/u;
+const PICTO = /\p{Extended_Pictographic}/gu;
+
+/** WhatsApp renders emoji-only messages large and without a bubble background. */
+function emojiScale(text: string): "lg" | "md" | null {
+  if (!text || !EMOJI_ONLY.test(text)) return null;
+  const count = (text.match(PICTO) ?? []).length;
+  if (count === 0 || count > 6) return null;
+  return count <= 3 ? "lg" : "md";
+}
+
 export const MessageBubble = memo(function MessageBubble({
   msg,
   isMe,
@@ -77,13 +90,14 @@ export const MessageBubble = memo(function MessageBubble({
   query,
   isMatch,
   isActive,
+  tail,
   client,
   onOpenMedia,
 }: Props) {
   if (msg.kind === "system") {
     return (
       <div className="flex justify-center px-4 py-1.5">
-        <p className="max-w-md rounded-lg bg-wa-panel/90 px-3 py-1.5 text-center text-xs text-wa-meta">
+        <p className="max-w-md rounded-lg bg-wa-panel/95 px-3 py-1.5 text-center text-[12.5px] text-wa-meta shadow-sm">
           <Highlighted text={msg.text} query={isMatch ? query : ""} />
         </p>
       </div>
@@ -91,19 +105,20 @@ export const MessageBubble = memo(function MessageBubble({
   }
 
   const hasMedia = msg.kind !== "text";
+  const big = hasMedia ? null : emojiScale(msg.text);
 
   return (
-    <div className={`flex px-3 py-0.5 ${isMe ? "justify-end" : "justify-start"}`}>
+    <div className={`flex px-[5%] py-[1px] md:px-12 ${isMe ? "justify-end" : "justify-start"}`}>
       <div
-        className={`max-w-[85%] rounded-lg px-2 pb-1.5 pt-1.5 shadow-sm sm:max-w-[68%] ${
-          isMe
-            ? "rounded-tr-none bg-wa-out text-wa-out-foreground"
-            : "rounded-tl-none bg-wa-in text-wa-in-foreground"
-        } ${isActive ? "ring-2 ring-wa-green" : ""}`}
+        className={`wa-bubble max-w-[85%] px-[9px] pb-[6px] pt-[6px] shadow-[0_1px_0.5px_rgba(11,20,26,0.13)] sm:max-w-[65%] ${
+          isMe ? "bg-wa-out text-wa-out-foreground" : "bg-wa-in text-wa-in-foreground"
+        } ${tail ? (isMe ? "wa-bubble-tail-out" : "wa-bubble-tail-in") : ""} ${
+          isActive ? "ring-2 ring-wa-green" : ""
+        }`}
       >
         {showName && !isMe && (
           <p
-            className="mb-0.5 px-1 text-[13px] font-semibold"
+            className="mb-0.5 text-[12.8px] font-medium leading-[17px]"
             style={{ color: `var(--wa-name-${colorIdx})` }}
           >
             {senderName}
@@ -118,21 +133,25 @@ export const MessageBubble = memo(function MessageBubble({
 
         <div className="flex flex-wrap items-end justify-end gap-x-2">
           {msg.text ? (
-            <p className="whitespace-pre-wrap break-words px-1 text-[15px] leading-[1.35]">
+            <p
+              className={`wa-text whitespace-pre-wrap break-words text-[14.2px] leading-[19px] ${
+                big === "lg" ? "wa-emoji-only" : big === "md" ? "wa-emoji-only-md" : ""
+              }`}
+            >
               <Body text={msg.text} query={isMatch ? query : ""} />
             </p>
           ) : hasMedia ? null : (
-            <p className="px-1 text-[15px] italic leading-[1.35] text-wa-meta">
+            <p className="text-[14.2px] italic leading-[19px] text-wa-meta">
               Message not included in export
             </p>
           )}
-          <span className="ml-auto flex shrink-0 items-center gap-1 pr-0.5 text-[11px] text-wa-meta">
+          <span className="ml-auto flex shrink-0 items-center gap-[3px] self-end pl-1 text-[11px] leading-[15px] text-wa-meta">
             {msg.edited && <span className="italic">edited</span>}
             {formatTime(msg.ts)}
             {isMe ? (
-              <CheckCheck className="size-3.5 text-wa-tick" />
+              <CheckCheck className="size-[15px] text-wa-tick" strokeWidth={2.2} />
             ) : (
-              <Check className="size-3.5 opacity-0" />
+              <Check className="size-[15px] opacity-0" />
             )}
           </span>
         </div>

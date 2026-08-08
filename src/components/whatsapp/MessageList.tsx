@@ -69,13 +69,14 @@ const Row = memo(function Row({
   onOpenMedia,
 }: RowProps) {
   const newDay = prevTs === null || dayKey(prevTs) !== dayKey(msg.ts);
-  const showName = senders.length > 2 && (newDay || prevSender === null || prevSender !== msg.s);
+  const newGroup = newDay || prevSender === null || prevSender !== msg.s;
+  const showName = senders.length > 2 && newGroup;
 
   return (
     <>
       {newDay && (
         <div className="flex justify-center py-3">
-          <span className="rounded-lg bg-wa-panel px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-wa-meta shadow-sm">
+          <span className="rounded-lg bg-wa-in px-3 py-[5px] text-[12.5px] font-medium uppercase text-wa-meta shadow-[0_1px_0.5px_rgba(11,20,26,0.13)]">
             {formatDay(msg.ts)}
           </span>
         </div>
@@ -89,6 +90,7 @@ const Row = memo(function Row({
         query={query}
         isMatch={isMatch}
         isActive={isActive}
+        tail={newGroup}
         client={client}
         onOpenMedia={onOpenMedia}
       />
@@ -159,15 +161,15 @@ export function MessageList({
   }, [items, messages, view]);
 
   return (
-    <div className="relative flex min-h-0 flex-1">
+    <div className="wa-doodle relative flex min-h-0 flex-1">
       {topDay && (
         <div className="pointer-events-none absolute left-0 right-0 top-2 z-10 flex justify-center">
-          <span className="rounded-lg bg-wa-panel/90 px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-wa-meta shadow-sm backdrop-blur">
+          <span className="rounded-lg bg-wa-in/95 px-3 py-[5px] text-[12.5px] font-medium uppercase text-wa-meta shadow-[0_1px_0.5px_rgba(11,20,26,0.13)] backdrop-blur">
             {topDay}
           </span>
         </div>
       )}
-      <div ref={parentRef} className="wa-doodle flex-1 overflow-y-auto overscroll-contain">
+      <div ref={parentRef} className="relative flex-1 overflow-y-auto overscroll-contain">
         <div className="relative w-full" style={{ height: `${totalSize}px` }}>
           {items.map((vi) => {
             const gi = view[vi.index] ?? 0;

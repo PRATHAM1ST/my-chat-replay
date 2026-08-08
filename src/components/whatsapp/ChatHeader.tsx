@@ -27,11 +27,11 @@ export function ChatHeader({
 }: Props) {
   const initials = chatName.slice(0, 2).toUpperCase();
   return (
-    <header className="flex items-center gap-3 border-b border-wa-divider bg-wa-panel px-3 py-2 text-wa-panel-foreground">
+    <header className="flex h-[59px] shrink-0 items-center gap-3 bg-wa-panel px-4 text-wa-panel-foreground">
       <button
         onClick={onClose}
         aria-label="Close chat"
-        className="rounded-full p-1.5 hover:bg-wa-divider/60 md:hidden"
+        className="-ml-1 rounded-full p-1.5 hover:bg-wa-divider/60 md:hidden"
       >
         <ArrowLeft className="size-5" />
       </button>
@@ -39,8 +39,8 @@ export function ChatHeader({
         {initials}
       </span>
       <div className="min-w-0 flex-1">
-        <h1 className="truncate text-base font-semibold leading-tight">{chatName}</h1>
-        <p className="truncate text-xs text-wa-meta">
+        <h1 className="truncate text-[16px] font-normal leading-[21px]">{chatName}</h1>
+        <p className="truncate text-[13px] leading-[17px] text-wa-meta">
           {senders.length > 2 ? `${senders.length} participants · ` : `${senders.join(", ")} · `}
           {total.toLocaleString()} messages
         </p>
