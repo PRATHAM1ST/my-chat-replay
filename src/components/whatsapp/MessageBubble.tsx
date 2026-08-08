@@ -64,8 +64,7 @@ function Body({ text, query }: { text: string; query: string }) {
     );
     last = at + raw.length;
   }
-  if (last < text.length)
-    out.push(<Highlighted key={k++} text={text.slice(last)} query={query} />);
+  if (last < text.length) out.push(<Highlighted key={k++} text={text.slice(last)} query={query} />);
   return <>{out}</>;
 }
 
