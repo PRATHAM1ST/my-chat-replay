@@ -14,6 +14,7 @@ import {
   setLastId,
   type LibraryEntry,
 } from "@/lib/whatsapp/library";
+import { displayNames, getPrefs, savePrefs, type ChatPrefs } from "@/lib/whatsapp/prefs";
 import { ChatHeader } from "./ChatHeader";
 import { ChatSidebar } from "./ChatSidebar";
 import { ContactInfo } from "./ContactInfo";
@@ -46,7 +47,8 @@ export function ChatViewer() {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [scrollTarget, setScrollTarget] = useState<{ row: number; nonce: number } | null>(null);
   const nonce = useRef(0);
-  const [lightbox, setLightbox] = useState<{ msg: Msg; url: string } | null>(null);
+  const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
+  const [prefs, setPrefs] = useState<ChatPrefs>({});
   const [infoOpen, setInfoOpen] = useState(false);
   const [mobileChatOpen, setMobileChatOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
