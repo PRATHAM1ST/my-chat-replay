@@ -1,5 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeftRight, Check, ExternalLink, FileText, ImageIcon, Link2, Pencil, X } from "lucide-react";
+import {
+  ArrowLeftRight,
+  Check,
+  ExternalLink,
+  FileText,
+  ImageIcon,
+  Link2,
+  Pencil,
+  X,
+} from "lucide-react";
 import type { WaClient } from "@/lib/whatsapp/client";
 import type { Msg, ParsedChat } from "@/lib/whatsapp/types";
 import { Button } from "@/components/ui/button";

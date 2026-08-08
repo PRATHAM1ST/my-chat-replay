@@ -92,7 +92,10 @@ export function Lightbox({ items, index, client, senders, onIndex, onClose }: Pr
         )}
       </header>
 
-      <div className="relative flex min-h-0 flex-1 items-center justify-center p-2" onClick={onClose}>
+      <div
+        className="relative flex min-h-0 flex-1 items-center justify-center p-2"
+        onClick={onClose}
+      >
         {items.length > 1 && (
           <Button
             variant="ghost"

@@ -228,10 +228,7 @@ export function ChatViewer() {
 
   const matchSet = useMemo(() => new Set(Array.from(matches)), [matches]);
 
-  const senderNames = useMemo(
-    () => (chat ? displayNames(chat.senders, prefs) : []),
-    [chat, prefs],
-  );
+  const senderNames = useMemo(() => (chat ? displayNames(chat.senders, prefs) : []), [chat, prefs]);
   const chatName = prefs.chatName ?? chat?.chatName ?? "Chat";
 
   /** every image/video/sticker in order — the carousel's playlist */
@@ -270,7 +267,8 @@ export function ChatViewer() {
 
   const swapSides = useCallback(() => {
     if (!chat || chat.senders.length < 2) return;
-    const next = chat.senders.length === 2 ? (meIndex === 0 ? 1 : 0) : (meIndex + 1) % chat.senders.length;
+    const next =
+      chat.senders.length === 2 ? (meIndex === 0 ? 1 : 0) : (meIndex + 1) % chat.senders.length;
     changeMe(next);
   }, [chat, meIndex, changeMe]);
 
@@ -295,8 +293,6 @@ export function ChatViewer() {
     },
     [persist, entries, activeId, refreshLibrary],
   );
-
-
 
   const jumpTo = useCallback(
     (globalIndex: number) => {
