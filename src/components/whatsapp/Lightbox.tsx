@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, Download, X } from "lucide-react";
 import type { WaClient } from "@/lib/whatsapp/client";
 import type { Msg } from "@/lib/whatsapp/types";
-import { formatDayLabel, formatTime } from "@/lib/whatsapp/format";
+import { formatDay, formatTime } from "@/lib/whatsapp/format";
 import { Button } from "@/components/ui/button";
 
 interface Props {
@@ -74,7 +74,7 @@ export function Lightbox({ items, index, client, senders, onIndex, onClose }: Pr
         <div className="min-w-0">
           <p className="truncate text-sm">{name}</p>
           <p className="truncate text-xs opacity-70">
-            {formatDayLabel(msg.ts)} at {formatTime(msg.ts)}
+            {formatDay(msg.ts)} at {formatTime(msg.ts)}
           </p>
         </div>
         <span className="ml-auto text-xs opacity-70">
