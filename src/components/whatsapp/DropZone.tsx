@@ -1,8 +1,7 @@
 import { useCallback, useRef, useState } from "react";
-import { Upload, ShieldCheck, FileArchive } from "lucide-react";
-import { formatBytes } from "@/lib/whatsapp/format";
+import { Upload, LockKeyhole } from "lucide-react";
 import { pickArchive, supportsHandles, type LibraryEntry } from "@/lib/whatsapp/library";
-import { ChatLibrary } from "./ChatLibrary";
+import { Button } from "@/components/ui/button";
 
 interface Props {
   onFile: (file: File, handle?: FileSystemFileHandle) => void;
@@ -10,12 +9,7 @@ interface Props {
   phase: string;
   pct: number;
   error: string | null;
-  entries: LibraryEntry[];
-  needsPermission: Set<string>;
-  busyId: string | null;
-  onOpenEntry: (entry: LibraryEntry) => void;
-  onRemoveEntry: (entry: LibraryEntry) => void;
-  onClearEntries: () => void;
+  entries?: LibraryEntry[];
 }
 
 export function DropZone({
@@ -24,12 +18,6 @@ export function DropZone({
   phase,
   pct,
   error,
-  entries,
-  needsPermission,
-  busyId,
-  onOpenEntry,
-  onRemoveEntry,
-  onClearEntries,
 }: Props) {
   const [over, setOver] = useState(false);
   const input = useRef<HTMLInputElement>(null);
@@ -55,16 +43,10 @@ export function DropZone({
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-wa-chat px-5 py-12">
-      <div className="w-full max-w-lg">
-        <div className="mb-8 flex items-center gap-3">
-          <span className="flex size-11 items-center justify-center rounded-full bg-wa-teal text-wa-out-foreground">
-            <FileArchive className="size-5" />
-          </span>
-          <div>
-            <h1 className="text-xl font-semibold text-wa-panel-foreground">Chat Replay</h1>
-            <p className="text-sm text-wa-meta">Read your WhatsApp export like the real thing</p>
-          </div>
-        </div>
+      <div className="w-full max-w-md text-center">
+        <span className="mx-auto flex size-20 items-center justify-center rounded-full bg-wa-teal text-wa-out-foreground"><Upload className="size-8" /></span>
+        <h1 className="mt-6 text-2xl font-light text-wa-panel-foreground">Open a chat export</h1>
+        <p className="mt-2 text-sm text-wa-meta">Choose a WhatsApp ZIP or text file</p>
 
         <div
           onDragOver={(e) => {
@@ -78,7 +60,7 @@ export function DropZone({
             pick(e.dataTransfer.files);
           }}
           onClick={browse}
-          className={`cursor-pointer rounded-2xl border-2 border-dashed bg-wa-in p-10 text-center transition-colors ${
+          className={`mt-8 cursor-pointer rounded-lg border-2 border-dashed bg-wa-in p-8 text-center transition-colors ${
             over ? "border-wa-green bg-wa-out/40" : "border-wa-divider"
           }`}
         >
@@ -89,8 +71,7 @@ export function DropZone({
             className="hidden"
             onChange={(e) => pick(e.target.files)}
           />
-          <Upload className="mx-auto size-8 text-wa-teal" />
-          <p className="mt-4 font-medium text-wa-in-foreground">
+          <p className="font-medium text-wa-in-foreground">
             {busy ? phase : "Drop your WhatsApp export .zip here"}
           </p>
           <p className="mt-1 text-sm text-wa-meta">
@@ -107,36 +88,13 @@ export function DropZone({
           )}
         </div>
 
-        <ChatLibrary
-          entries={entries}
-          needsPermission={needsPermission}
-          busyId={busyId}
-          onOpen={onOpenEntry}
-          onRemove={onRemoveEntry}
-          onClear={onClearEntries}
-        />
-
         {error && (
           <p className="mt-4 rounded-lg bg-destructive/10 px-4 py-3 text-sm text-destructive">
             {error}
           </p>
         )}
 
-        <div className="mt-8 space-y-3 text-sm text-wa-meta">
-          <p className="flex items-start gap-2">
-            <ShieldCheck className="mt-0.5 size-4 shrink-0 text-wa-green" />
-            100% local. Your archive is parsed in your browser — nothing is uploaded, stored or sent
-            anywhere.
-          </p>
-          <p>
-            Handles iOS and Android exports, groups, media, and files of{" "}
-            {formatBytes(500 * 1024 * 1024)}+ thanks to a background worker, lazy media extraction
-            and a virtualized message list.
-          </p>
-          <p className="text-xs">
-            Export a chat in WhatsApp: open the chat → menu → More → Export chat → Attach media.
-          </p>
-        </div>
+        <p className="mt-6 flex items-center justify-center gap-2 text-xs text-wa-meta"><LockKeyhole className="size-3.5" /> Your files stay on this device</p>
       </div>
     </main>
   );
