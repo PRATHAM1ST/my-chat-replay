@@ -46,7 +46,6 @@ export function ChatHeader({
         </p>
       </div>
 
-
       <label className="hidden items-center gap-1.5 text-xs text-wa-meta sm:flex">
         You are
         <select
