@@ -159,47 +159,46 @@ export function MessageList({
   }, [items, messages, view]);
 
   return (
-    <div
-      ref={parentRef}
-      className="wa-doodle relative flex-1 overflow-y-auto overscroll-contain [content-visibility:auto]"
-    >
+    <div className="relative flex min-h-0 flex-1">
       {topDay && (
-        <div className="pointer-events-none sticky top-0 z-10 flex justify-center pt-2">
+        <div className="pointer-events-none absolute left-0 right-0 top-2 z-10 flex justify-center">
           <span className="rounded-lg bg-wa-panel/90 px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-wa-meta shadow-sm backdrop-blur">
             {topDay}
           </span>
         </div>
       )}
-      <div className="relative w-full" style={{ height: `${totalSize}px`, marginTop: "-2rem" }}>
-        {items.map((vi) => {
-          const gi = view[vi.index] ?? 0;
-          const msg = messages[gi];
-          if (!msg) return null;
-          const prev = vi.index > 0 ? messages[view[vi.index - 1] ?? 0] : undefined;
+      <div ref={parentRef} className="wa-doodle flex-1 overflow-y-auto overscroll-contain">
+        <div className="relative w-full" style={{ height: `${totalSize}px` }}>
+          {items.map((vi) => {
+            const gi = view[vi.index] ?? 0;
+            const msg = messages[gi];
+            if (!msg) return null;
+            const prev = vi.index > 0 ? messages[view[vi.index - 1] ?? 0] : undefined;
 
-          return (
-            <div
-              key={vi.key}
-              data-index={vi.index}
-              ref={measure}
-              className="absolute left-0 top-0 w-full will-change-transform"
-              style={{ transform: `translateY(${vi.start}px)`, contain: "layout style" }}
-            >
-              <Row
-                msg={msg}
-                prevTs={prev ? prev.ts : null}
-                prevSender={prev ? prev.s : null}
-                senders={senders}
-                meIndex={meIndex}
-                client={client}
-                query={query}
-                isMatch={matchSet.has(gi)}
-                isActive={activeIndex === gi}
-                onOpenMedia={onOpenMedia}
-              />
-            </div>
-          );
-        })}
+            return (
+              <div
+                key={vi.key}
+                data-index={vi.index}
+                ref={measure}
+                className="absolute left-0 top-0 w-full will-change-transform"
+                style={{ transform: `translateY(${vi.start}px)`, contain: "layout style" }}
+              >
+                <Row
+                  msg={msg}
+                  prevTs={prev ? prev.ts : null}
+                  prevSender={prev ? prev.s : null}
+                  senders={senders}
+                  meIndex={meIndex}
+                  client={client}
+                  query={query}
+                  isMatch={matchSet.has(gi)}
+                  isActive={activeIndex === gi}
+                  onOpenMedia={onOpenMedia}
+                />
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
