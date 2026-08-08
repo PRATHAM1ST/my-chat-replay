@@ -146,9 +146,9 @@
 
 /* ---------- WhatsApp viewer design tokens ---------- */
 @theme inline {
-  --font-sans: "Segoe UI", Helvetica, "Helvetica Neue", system-ui, -apple-system,
-    "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
-
+  --font-sans:
+    "Segoe UI", Helvetica, "Helvetica Neue", system-ui, -apple-system, "Noto Color Emoji",
+    "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
 
   --color-wa-panel: var(--wa-panel);
   --color-wa-panel-foreground: var(--wa-panel-foreground);
@@ -232,7 +232,6 @@
   opacity: 0.07;
 }
 
-
 /* Authentic bubble corner tails (8x13, WhatsApp Web geometry) */
 .wa-bubble {
   position: relative;
@@ -285,4 +284,3 @@
 .wa-emoji-transparent.wa-bubble-tail-out::before {
   display: none;
 }
-

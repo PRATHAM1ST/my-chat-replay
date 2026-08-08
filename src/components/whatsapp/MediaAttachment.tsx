@@ -48,7 +48,11 @@ export function MediaAttachment({ msg, client, onOpen }: Props) {
   if (msg.kind === "image" || msg.kind === "sticker") {
     const sticker = msg.kind === "sticker";
     return (
-      <Button variant="ghost" onClick={() => url && onOpen(msg, url)} className="block h-auto w-full overflow-hidden rounded-none p-0 hover:opacity-95">
+      <Button
+        variant="ghost"
+        onClick={() => url && onOpen(msg, url)}
+        className="block h-auto w-full overflow-hidden rounded-none p-0 hover:opacity-95"
+      >
         {url ? (
           <img
             src={url}
@@ -56,9 +60,7 @@ export function MediaAttachment({ msg, client, onOpen }: Props) {
             loading="lazy"
             decoding="async"
             className={
-              sticker
-                ? "h-32 w-32 object-contain"
-                : "max-h-80 w-full object-cover sm:max-w-xs"
+              sticker ? "h-32 w-32 object-contain" : "max-h-80 w-full object-cover sm:max-w-xs"
             }
           />
         ) : (

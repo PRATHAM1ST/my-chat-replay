@@ -132,7 +132,9 @@ export const MessageBubble = memo(function MessageBubble({
           </div>
         )}
 
-        <div className={`flex flex-wrap items-end justify-end gap-x-2 ${mediaCard && msg.text ? "px-1.5 pb-1 pt-1.5" : ""} ${mediaCard && !msg.text ? "px-1.5 pb-1" : ""}`}>
+        <div
+          className={`flex flex-wrap items-end justify-end gap-x-2 ${mediaCard && msg.text ? "px-1.5 pb-1 pt-1.5" : ""} ${mediaCard && !msg.text ? "px-1.5 pb-1" : ""}`}
+        >
           {msg.text ? (
             <p
               className={`wa-text whitespace-pre-wrap break-words text-[14.2px] leading-[19px] ${
@@ -146,7 +148,9 @@ export const MessageBubble = memo(function MessageBubble({
               Message not included in export
             </p>
           )}
-          <span className={`ml-auto flex shrink-0 items-center gap-[3px] self-end pl-1 text-[11px] leading-[15px] text-wa-meta ${big ? "rounded bg-wa-in/90 px-1 py-0.5 shadow-sm" : ""}`}>
+          <span
+            className={`ml-auto flex shrink-0 items-center gap-[3px] self-end pl-1 text-[11px] leading-[15px] text-wa-meta ${big ? "rounded bg-wa-in/90 px-1 py-0.5 shadow-sm" : ""}`}
+          >
             {msg.edited && <span className="italic">edited</span>}
             {formatTime(msg.ts)}
             {isMe ? (

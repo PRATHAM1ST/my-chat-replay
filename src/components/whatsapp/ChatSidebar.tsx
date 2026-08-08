@@ -45,10 +45,22 @@ export function ChatSidebar({
           <h1 className="truncate text-xl font-semibold text-wa-panel-foreground">Chats</h1>
         </div>
         <div className="relative flex shrink-0 items-center gap-1">
-          <Button variant="ghost" size="icon" onClick={onAdd} aria-label="Add chat export" className="rounded-full text-wa-panel-foreground hover:bg-wa-divider/60">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onAdd}
+            aria-label="Add chat export"
+            className="rounded-full text-wa-panel-foreground hover:bg-wa-divider/60"
+          >
             <Plus className="size-5" />
           </Button>
-          <Button variant="ghost" size="icon" onClick={() => setMenuOpen((value) => !value)} aria-label="Chat list menu" className="rounded-full text-wa-panel-foreground hover:bg-wa-divider/60">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setMenuOpen((value) => !value)}
+            aria-label="Chat list menu"
+            className="rounded-full text-wa-panel-foreground hover:bg-wa-divider/60"
+          >
             <MoreVertical className="size-5" />
           </Button>
           {menuOpen && (
@@ -87,7 +99,10 @@ export function ChatSidebar({
               const locked = needsPermission.has(entry.id);
               const active = activeId === entry.id;
               return (
-                <li key={entry.id} className={`group grid grid-cols-[minmax(0,1fr)_auto] items-center ${active ? "bg-wa-panel" : "hover:bg-wa-panel/70"}`}>
+                <li
+                  key={entry.id}
+                  className={`group grid grid-cols-[minmax(0,1fr)_auto] items-center ${active ? "bg-wa-panel" : "hover:bg-wa-panel/70"}`}
+                >
                   <Button
                     variant="ghost"
                     onClick={() => onOpen(entry)}
@@ -98,7 +113,9 @@ export function ChatSidebar({
                       {locked ? <KeyRound className="size-5" /> : <Archive className="size-5" />}
                     </span>
                     <span className="min-w-0 flex-1 border-b border-wa-divider pb-3">
-                      <span className="block truncate text-[16px] font-normal text-wa-in-foreground">{entry.chatName || entry.name}</span>
+                      <span className="block truncate text-[16px] font-normal text-wa-in-foreground">
+                        {entry.chatName || entry.name}
+                      </span>
                       <span className="mt-0.5 block truncate text-[13px] font-normal text-wa-meta">
                         {busyId === entry.id
                           ? "Opening…"

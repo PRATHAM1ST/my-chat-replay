@@ -37,7 +37,8 @@ function estimate(msg: Msg | undefined, newDay: boolean): number {
     case "document":
       return h + 60;
     default: {
-      if (/^(?:\p{Extended_Pictographic}|\p{Emoji_Component}|\uFE0F|\u200D|\s)+$/u.test(msg.text)) return h + 72;
+      if (/^(?:\p{Extended_Pictographic}|\p{Emoji_Component}|\uFE0F|\u200D|\s)+$/u.test(msg.text))
+        return h + 72;
       const lines = Math.max(1, Math.ceil(msg.text.length / 42));
       return h + 30 + lines * 19;
     }

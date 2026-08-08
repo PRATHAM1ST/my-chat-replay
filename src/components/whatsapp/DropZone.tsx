@@ -12,13 +12,7 @@ interface Props {
   entries?: LibraryEntry[];
 }
 
-export function DropZone({
-  onFile,
-  busy,
-  phase,
-  pct,
-  error,
-}: Props) {
+export function DropZone({ onFile, busy, phase, pct, error }: Props) {
   const [over, setOver] = useState(false);
   const input = useRef<HTMLInputElement>(null);
 
@@ -44,7 +38,9 @@ export function DropZone({
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-wa-chat px-5 py-12">
       <div className="w-full max-w-md text-center">
-        <span className="mx-auto flex size-20 items-center justify-center rounded-full bg-wa-teal text-wa-out-foreground"><Upload className="size-8" /></span>
+        <span className="mx-auto flex size-20 items-center justify-center rounded-full bg-wa-teal text-wa-out-foreground">
+          <Upload className="size-8" />
+        </span>
         <h1 className="mt-6 text-2xl font-light text-wa-panel-foreground">Open a chat export</h1>
         <p className="mt-2 text-sm text-wa-meta">Choose a WhatsApp ZIP or text file</p>
 
@@ -94,7 +90,9 @@ export function DropZone({
           </p>
         )}
 
-        <p className="mt-6 flex items-center justify-center gap-2 text-xs text-wa-meta"><LockKeyhole className="size-3.5" /> Your files stay on this device</p>
+        <p className="mt-6 flex items-center justify-center gap-2 text-xs text-wa-meta">
+          <LockKeyhole className="size-3.5" /> Your files stay on this device
+        </p>
       </div>
     </main>
   );
