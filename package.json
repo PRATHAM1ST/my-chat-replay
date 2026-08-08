@@ -12,6 +12,7 @@
     "format": "prettier --write ."
   },
   "dependencies": {
+    "@fontsource/noto-color-emoji": "^5.3.0",
     "@hookform/resolvers": "^5.2.2",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.15",
@@ -45,8 +46,6 @@
     "@tanstack/react-start": "1.168.32",
     "@tanstack/react-virtual": "^3.14.9",
     "@tanstack/router-plugin": "1.168.23",
-    "@twemoji/api": "^17.0.3",
-    "@twemoji/svg": "^15.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
