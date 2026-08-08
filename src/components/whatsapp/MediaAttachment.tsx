@@ -74,7 +74,7 @@ export function MediaAttachment({ msg, client, onOpen }: Props) {
         className="relative block overflow-hidden rounded-lg"
       >
         <video
-          src={url ?? undefined}
+          src={url ? `${url}#t=0.1` : undefined}
           preload="metadata"
           muted
           className="max-h-72 w-full max-w-xs rounded-lg bg-black/70 object-cover"
