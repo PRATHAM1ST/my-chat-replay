@@ -17,7 +17,7 @@ function clean(s: string) {
 
 function detectDayFirst(lines: string[]): boolean {
   for (let i = 0; i < lines.length; i++) {
-    const m = HEAD.exec(clean(lines[i]));
+    const m = HEAD.exec(clean(lines[i] ?? ""));
     if (!m) continue;
     const a = Number(m[1]);
     const b = Number(m[2]);
@@ -30,7 +30,7 @@ function detectDayFirst(lines: string[]): boolean {
 function omittedKind(text: string): MsgKind | null {
   const m = OMITTED.exec(text);
   if (!m) return null;
-  const w = m[1].toLowerCase();
+  const w = (m[1] ?? "").toLowerCase();
   if (w === "sticker") return "sticker";
   if (w === "video") return "video";
   if (w === "audio" || w === "voice message") return "audio";
@@ -68,7 +68,7 @@ export function parseChat(raw: string, opts: ParseOptions = {}): ParsedChat {
     let kind: MsgKind = sender < 0 ? "system" : "text";
 
     const ios = ATTACHED_IOS.exec(body);
-    const android = !ios ? ATTACHED_ANDROID.exec(body.trim()) : null;
+    const android = ios ? null : ATTACHED_ANDROID.exec(body.trim());
     const rawName = ios?.[1] ?? android?.[1];
 
     if (rawName) {
@@ -87,7 +87,14 @@ export function parseChat(raw: string, opts: ParseOptions = {}): ParsedChat {
       }
     }
 
-    messages.push({ i: messages.length, ts, s: sender, text: body, file, kind });
+    messages.push({
+      i: messages.length,
+      ts,
+      s: sender,
+      text: body,
+      kind,
+      ...(file ? { file } : {}),
+    });
   };
 
   let curTs = 0;
@@ -108,7 +115,7 @@ export function parseChat(raw: string, opts: ParseOptions = {}): ParsedChat {
     if (opts.onProgress && li % step === 0)
       opts.onProgress(li / Math.max(1, lines.length));
 
-    const line = clean(lines[li]);
+    const line = clean(lines[li] ?? "");
     const m = HEAD.exec(line);
     if (!m) {
       if (has) curText.push(line);
@@ -134,7 +141,7 @@ export function parseChat(raw: string, opts: ParseOptions = {}): ParsedChat {
     const rest = m[8] ?? "";
     const sm = /^([^:\n]{1,80}?):\s([\s\S]*)$/.exec(rest);
     if (sm) {
-      const name = sm[1].trim();
+      const name = (sm[1] ?? "").trim();
       let idx = senderIdx.get(name);
       if (idx === undefined) {
         idx = senders.length;
@@ -142,9 +149,9 @@ export function parseChat(raw: string, opts: ParseOptions = {}): ParsedChat {
         senders.push(name);
         counts.push(0);
       }
-      counts[idx]++;
+      counts[idx] = (counts[idx] ?? 0) + 1;
       curSender = idx;
-      curText = [sm[2]];
+      curText = [sm[2] ?? ""];
     } else {
       curSender = -1;
       curText = [rest];
@@ -154,13 +161,15 @@ export function parseChat(raw: string, opts: ParseOptions = {}): ParsedChat {
   flush();
 
   let meIndex = 0;
-  for (let i = 1; i < counts.length; i++) if (counts[i] > counts[meIndex]) meIndex = i;
+  for (let i = 1; i < counts.length; i++)
+    if ((counts[i] ?? 0) > (counts[meIndex] ?? 0)) meIndex = i;
 
+  const other = senders.find((_, i) => i !== meIndex);
   return {
     messages,
     senders,
     counts,
-    chatName: opts.chatName ?? (senders.length === 2 ? senders.find((_, i) => i !== meIndex) ?? "Chat" : "Chat"),
+    chatName: opts.chatName ?? (senders.length === 2 && other ? other : "Chat"),
     mediaCount,
     meIndex,
   };
