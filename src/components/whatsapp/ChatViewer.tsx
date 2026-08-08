@@ -334,7 +334,8 @@ export function ChatViewer() {
     setSender(null);
     setMediaOnly(false);
     setSearchOpen(false);
-    setLightbox(null);
+    setLightboxIdx(null);
+    setPrefs({});
     setInfoOpen(false);
     setMobileChatOpen(false);
     setActiveId(null);
