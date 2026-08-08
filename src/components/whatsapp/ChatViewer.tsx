@@ -454,7 +454,7 @@ export function ChatViewer() {
           meIndex={meIndex}
           onMeChange={changeMe}
           onSwap={swapSides}
-          onRenameChat={(name) => persist({ chatName: name })}
+          onRenameChat={renameChat}
           onRenameSender={renameSender}
           onClose={() => setInfoOpen(false)}
           onOpenMedia={openMedia}
