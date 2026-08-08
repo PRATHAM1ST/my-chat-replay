@@ -46,9 +46,7 @@ export function MessageList({
   useEffect(() => {
     if (view.length && lastLen.current !== view.length) {
       lastLen.current = view.length;
-      requestAnimationFrame(() =>
-        virtualizer.scrollToIndex(view.length - 1, { align: "end" }),
-      );
+      requestAnimationFrame(() => virtualizer.scrollToIndex(view.length - 1, { align: "end" }));
     }
   }, [view.length, virtualizer]);
 
@@ -68,22 +66,15 @@ export function MessageList({
   }, [senders]);
 
   return (
-    <div
-      ref={parentRef}
-      className="wa-doodle flex-1 overflow-y-auto overscroll-contain"
-    >
-      <div
-        className="relative w-full"
-        style={{ height: `${virtualizer.getTotalSize()}px` }}
-      >
+    <div ref={parentRef} className="wa-doodle flex-1 overflow-y-auto overscroll-contain">
+      <div className="relative w-full" style={{ height: `${virtualizer.getTotalSize()}px` }}>
         {items.map((vi) => {
           const gi = view[vi.index] ?? 0;
           const msg = messages[gi];
           if (!msg) return null;
           const prev = vi.index > 0 ? messages[view[vi.index - 1] ?? 0] : undefined;
           const newDay = !prev || dayKey(prev.ts) !== dayKey(msg.ts);
-          const showName =
-            senders.length > 2 && (newDay || !prev || prev.s !== msg.s);
+          const showName = senders.length > 2 && (newDay || !prev || prev.s !== msg.s);
 
           return (
             <div

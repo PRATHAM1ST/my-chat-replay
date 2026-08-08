@@ -39,13 +39,9 @@ export function ChatHeader({
         {initials}
       </span>
       <div className="min-w-0 flex-1">
-        <h1 className="truncate text-base font-semibold leading-tight">
-          {chatName}
-        </h1>
+        <h1 className="truncate text-base font-semibold leading-tight">{chatName}</h1>
         <p className="truncate text-xs text-wa-meta">
-          {senders.length > 2
-            ? `${senders.length} participants · `
-            : `${senders.join(", ")} · `}
+          {senders.length > 2 ? `${senders.length} participants · ` : `${senders.join(", ")} · `}
           {total.toLocaleString()} messages
         </p>
       </div>

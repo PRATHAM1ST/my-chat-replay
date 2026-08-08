@@ -46,10 +46,7 @@ export function MediaAttachment({ msg, client, onOpen }: Props) {
   if (msg.kind === "image" || msg.kind === "sticker") {
     const sticker = msg.kind === "sticker";
     return (
-      <button
-        onClick={() => url && onOpen(msg, url)}
-        className="block overflow-hidden rounded-lg"
-      >
+      <button onClick={() => url && onOpen(msg, url)} className="block overflow-hidden rounded-lg">
         {url ? (
           <img
             src={url}
@@ -91,14 +88,7 @@ export function MediaAttachment({ msg, client, onOpen }: Props) {
   }
 
   if (msg.kind === "audio") {
-    return (
-      <audio
-        controls
-        preload="none"
-        src={url ?? undefined}
-        className="w-56 max-w-full"
-      />
-    );
+    return <audio controls preload="none" src={url ?? undefined} className="w-56 max-w-full" />;
   }
 
   return (

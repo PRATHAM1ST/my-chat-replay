@@ -1,11 +1,4 @@
-export type MsgKind =
-  | "text"
-  | "image"
-  | "video"
-  | "audio"
-  | "sticker"
-  | "document"
-  | "system";
+export type MsgKind = "text" | "image" | "video" | "audio" | "sticker" | "document" | "system";
 
 export interface Msg {
   /** index in the full message array */
@@ -36,22 +29,14 @@ export interface QueryFilters {
   mediaOnly: boolean;
 }
 
-export const MEDIA_KINDS: MsgKind[] = [
-  "image",
-  "video",
-  "audio",
-  "sticker",
-  "document",
-];
+export const MEDIA_KINDS: MsgKind[] = ["image", "video", "audio", "sticker", "document"];
 
 export function kindFromFileName(name: string): MsgKind {
   const ext = name.split(".").pop()?.toLowerCase() ?? "";
   if (ext === "webp") return "sticker";
-  if (["jpg", "jpeg", "png", "gif", "bmp", "heic", "avif"].includes(ext))
-    return "image";
+  if (["jpg", "jpeg", "png", "gif", "bmp", "heic", "avif"].includes(ext)) return "image";
   if (["mp4", "mov", "3gp", "mkv", "webm", "avi"].includes(ext)) return "video";
-  if (["opus", "mp3", "m4a", "ogg", "wav", "aac", "amr"].includes(ext))
-    return "audio";
+  if (["opus", "mp3", "m4a", "ogg", "wav", "aac", "amr"].includes(ext)) return "audio";
   return "document";
 }
 

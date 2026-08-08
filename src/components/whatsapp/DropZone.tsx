@@ -30,12 +30,8 @@ export function DropZone({ onFile, busy, phase, pct, error }: Props) {
             <FileArchive className="size-5" />
           </span>
           <div>
-            <h1 className="text-xl font-semibold text-wa-panel-foreground">
-              Chat Replay
-            </h1>
-            <p className="text-sm text-wa-meta">
-              Read your WhatsApp export like the real thing
-            </p>
+            <h1 className="text-xl font-semibold text-wa-panel-foreground">Chat Replay</h1>
+            <p className="text-sm text-wa-meta">Read your WhatsApp export like the real thing</p>
           </div>
         </div>
 
@@ -67,9 +63,7 @@ export function DropZone({ onFile, busy, phase, pct, error }: Props) {
             {busy ? phase : "Drop your WhatsApp export .zip here"}
           </p>
           <p className="mt-1 text-sm text-wa-meta">
-            {busy
-              ? `${Math.round(pct * 100)}%`
-              : "or click to browse — .zip or _chat.txt"}
+            {busy ? `${Math.round(pct * 100)}%` : "or click to browse — .zip or _chat.txt"}
           </p>
 
           {busy && (
@@ -91,17 +85,16 @@ export function DropZone({ onFile, busy, phase, pct, error }: Props) {
         <div className="mt-8 space-y-3 text-sm text-wa-meta">
           <p className="flex items-start gap-2">
             <ShieldCheck className="mt-0.5 size-4 shrink-0 text-wa-green" />
-            100% local. Your archive is parsed in your browser — nothing is
-            uploaded, stored or sent anywhere.
+            100% local. Your archive is parsed in your browser — nothing is uploaded, stored or sent
+            anywhere.
           </p>
           <p>
             Handles iOS and Android exports, groups, media, and files of{" "}
-            {formatBytes(500 * 1024 * 1024)}+ thanks to a background worker,
-            lazy media extraction and a virtualized message list.
+            {formatBytes(500 * 1024 * 1024)}+ thanks to a background worker, lazy media extraction
+            and a virtualized message list.
           </p>
           <p className="text-xs">
-            Export a chat in WhatsApp: open the chat → menu → More → Export chat
-            → Attach media.
+            Export a chat in WhatsApp: open the chat → menu → More → Export chat → Attach media.
           </p>
         </div>
       </div>

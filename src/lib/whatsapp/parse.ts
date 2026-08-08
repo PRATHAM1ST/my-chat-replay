@@ -3,7 +3,7 @@ import { kindFromFileName, type Msg, type MsgKind, type ParsedChat } from "./typ
 // Matches both iOS "[12/03/2024, 14:22:01] Name: text" and
 // Android "12/03/24, 2:22 pm - Name: text" line headers.
 const HEAD =
-  /^\[?(\d{1,4})[.\/-](\d{1,2})[.\/-](\d{2,4}),?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\s*([APap])\.?[Mm]\.?)?\]?(?:\s*-)?\s*([\s\S]*)$/;
+  /^\[?(\d{1,4})[./-](\d{1,2})[./-](\d{2,4}),?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\s*([APap])\.?[Mm]\.?)?\]?(?:\s*-)?\s*([\s\S]*)$/;
 
 const ATTACHED_IOS = /<attached:\s*([^>]+)>/i;
 const ATTACHED_ANDROID = /^(.+?)\s*\((?:file attached|attached)\)$/i;
@@ -112,8 +112,7 @@ export function parseChat(raw: string, opts: ParseOptions = {}): ParsedChat {
   const step = Math.max(1, Math.floor(lines.length / 50));
 
   for (let li = 0; li < lines.length; li++) {
-    if (opts.onProgress && li % step === 0)
-      opts.onProgress(li / Math.max(1, lines.length));
+    if (opts.onProgress && li % step === 0) opts.onProgress(li / Math.max(1, lines.length));
 
     const line = clean(lines[li] ?? "");
     const m = HEAD.exec(line);

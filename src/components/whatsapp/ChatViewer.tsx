@@ -30,9 +30,7 @@ export function ChatViewer() {
   const [matches, setMatches] = useState<Int32Array>(EMPTY);
   const [matchPos, setMatchPos] = useState(0);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
-  const [scrollTarget, setScrollTarget] = useState<{ row: number; nonce: number } | null>(
-    null,
-  );
+  const [scrollTarget, setScrollTarget] = useState<{ row: number; nonce: number } | null>(null);
   const nonce = useRef(0);
   const [lightbox, setLightbox] = useState<{ msg: Msg; url: string } | null>(null);
 
@@ -66,8 +64,7 @@ export function ChatViewer() {
           setPct(v);
         },
       });
-      if (!parsed.messages.length)
-        throw new Error("No messages could be read from this export.");
+      if (!parsed.messages.length) throw new Error("No messages could be read from this export.");
       setChat(parsed);
       setMeIndex(parsed.meIndex);
       setBusy(false);
@@ -164,9 +161,7 @@ export function ChatViewer() {
   };
 
   if (!chat || !clientRef.current) {
-    return (
-      <DropZone onFile={handleFile} busy={busy} phase={phase} pct={pct} error={error} />
-    );
+    return <DropZone onFile={handleFile} busy={busy} phase={phase} pct={pct} error={error} />;
   }
 
   return (
@@ -215,9 +210,8 @@ export function ChatViewer() {
       />
 
       <footer className="border-t border-wa-divider bg-wa-panel px-4 py-2 text-center text-xs text-wa-meta">
-        {view.length.toLocaleString()} of {chat.messages.length.toLocaleString()}{" "}
-        messages shown · {chat.mediaCount.toLocaleString()} attachments · read-only
-        local archive
+        {view.length.toLocaleString()} of {chat.messages.length.toLocaleString()} messages shown ·{" "}
+        {chat.mediaCount.toLocaleString()} attachments · read-only local archive
       </footer>
 
       <Lightbox item={lightbox} onClose={() => setLightbox(null)} />
