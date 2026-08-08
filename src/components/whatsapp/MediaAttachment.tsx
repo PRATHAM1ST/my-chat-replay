@@ -30,15 +30,16 @@ export function MediaAttachment({ msg, client, onOpen }: Props) {
     };
   }, [file, client]);
 
-  const label = (file?.split("/").pop() ?? msg.text) || "Attachment";
+  const label = (file?.split("/").pop() ?? msg.label ?? msg.text) || "Attachment";
 
   if (!file || failed) {
     return (
       <div className="flex items-center gap-2 rounded-lg bg-black/5 px-3 py-2 text-xs text-wa-meta dark:bg-white/10">
         <ImageOff className="size-4 shrink-0" />
-        <span className="truncate">
-          {msg.kind === "text" ? label : `${msg.kind} not included in export`}
+        <span className="max-w-52 truncate" title={label}>
+          {label}
         </span>
+        <span className="shrink-0 opacity-70">· not in export</span>
       </div>
     );
   }
@@ -73,7 +74,7 @@ export function MediaAttachment({ msg, client, onOpen }: Props) {
         className="relative block overflow-hidden rounded-lg"
       >
         <video
-          src={url ?? undefined}
+          src={url ? `${url}#t=0.1` : undefined}
           preload="metadata"
           muted
           className="max-h-72 w-full max-w-xs rounded-lg bg-black/70 object-cover"
