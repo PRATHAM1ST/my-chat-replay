@@ -1,4 +1,4 @@
-import { ArrowLeft, MoreVertical, Search, X } from "lucide-react";
+import { ArrowLeft, ArrowLeftRight, MoreVertical, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface Props {
@@ -6,6 +6,7 @@ interface Props {
   senders: string[];
   meIndex: number;
   onMeChange: (i: number) => void;
+  onSwap: () => void;
   searchOpen: boolean;
   onToggleSearch: () => void;
   onBack: () => void;
@@ -17,6 +18,7 @@ export function ChatHeader({
   senders,
   meIndex,
   onMeChange,
+  onSwap,
   searchOpen,
   onToggleSearch,
   onBack,
