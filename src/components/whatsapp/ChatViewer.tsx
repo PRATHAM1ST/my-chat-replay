@@ -228,6 +228,65 @@ export function ChatViewer() {
 
   const matchSet = useMemo(() => new Set(Array.from(matches)), [matches]);
 
+  const senderNames = useMemo(
+    () => (chat ? displayNames(chat.senders, prefs) : []),
+    [chat, prefs],
+  );
+  const chatName = prefs.chatName ?? chat?.chatName ?? "Chat";
+
+  /** every image/video/sticker in order — the carousel's playlist */
+  const mediaMsgs = useMemo(
+    () =>
+      chat
+        ? chat.messages.filter(
+            (m) => m.file && (m.kind === "image" || m.kind === "video" || m.kind === "sticker"),
+          )
+        : [],
+    [chat],
+  );
+
+  const openMedia = useCallback(
+    (msg: Msg) => {
+      const at = mediaMsgs.findIndex((m) => m.i === msg.i);
+      setLightboxIdx(at === -1 ? null : at);
+    },
+    [mediaMsgs],
+  );
+
+  const persist = useCallback(
+    (patch: ChatPrefs) => {
+      setPrefs((prev) => savePrefs(activeId, { ...prev, ...patch }));
+    },
+    [activeId],
+  );
+
+  const changeMe = useCallback(
+    (i: number) => {
+      setMeIndex(i);
+      persist({ meIndex: i });
+    },
+    [persist],
+  );
+
+  const swapSides = useCallback(() => {
+    if (!chat || chat.senders.length < 2) return;
+    const next = chat.senders.length === 2 ? (meIndex === 0 ? 1 : 0) : (meIndex + 1) % chat.senders.length;
+    changeMe(next);
+  }, [chat, meIndex, changeMe]);
+
+  const renameSender = useCallback(
+    (index: number, name: string) => {
+      const original = chat?.senders[index];
+      if (!original) return;
+      setPrefs((prev) =>
+        savePrefs(activeId, { ...prev, names: { ...prev.names, [original]: name } }),
+      );
+    },
+    [chat, activeId],
+  );
+
+
+
   const jumpTo = useCallback(
     (globalIndex: number) => {
       setActiveIndex(globalIndex);
