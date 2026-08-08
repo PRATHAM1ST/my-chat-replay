@@ -142,3 +142,87 @@
     color: var(--color-foreground);
   }
 }
+
+/* ---------- WhatsApp viewer design tokens ---------- */
+@theme inline {
+  --font-sans: "Segoe UI", Helvetica, "Helvetica Neue", system-ui, -apple-system,
+    sans-serif;
+  --color-wa-panel: var(--wa-panel);
+  --color-wa-panel-foreground: var(--wa-panel-foreground);
+  --color-wa-chat: var(--wa-chat);
+  --color-wa-in: var(--wa-in);
+  --color-wa-in-foreground: var(--wa-in-foreground);
+  --color-wa-out: var(--wa-out);
+  --color-wa-out-foreground: var(--wa-out-foreground);
+  --color-wa-teal: var(--wa-teal);
+  --color-wa-green: var(--wa-green);
+  --color-wa-tick: var(--wa-tick);
+  --color-wa-meta: var(--wa-meta);
+  --color-wa-divider: var(--wa-divider);
+  --color-wa-highlight: var(--wa-highlight);
+}
+
+:root {
+  --wa-panel: oklch(0.96 0.005 258.3);
+  --wa-panel-foreground: oklch(0.215 0.019 235.1);
+  --wa-chat: oklch(0.939 0.012 79.8);
+  --wa-in: oklch(1 0 0);
+  --wa-in-foreground: oklch(0.215 0.019 235.1);
+  --wa-out: oklch(0.957 0.067 141.1);
+  --wa-out-foreground: oklch(0.215 0.019 235.1);
+  --wa-teal: oklch(0.424 0.08 174.4);
+  --wa-green: oklch(0.651 0.157 153.9);
+  --wa-tick: oklch(0.755 0.117 229.7);
+  --wa-meta: oklch(0.559 0.025 233.7);
+  --wa-divider: oklch(0.876 0.009 236.6);
+  --wa-highlight: oklch(0.9 0.14 100);
+  --wa-name-1: oklch(0.55 0.15 250);
+  --wa-name-2: oklch(0.55 0.15 20);
+  --wa-name-3: oklch(0.5 0.13 160);
+  --wa-name-4: oklch(0.52 0.15 300);
+  --wa-name-5: oklch(0.55 0.14 60);
+  --wa-name-6: oklch(0.5 0.13 200);
+}
+
+.dark {
+  --wa-panel: oklch(0.285 0.021 234.1);
+  --wa-panel-foreground: oklch(0.944 0.005 228.8);
+  --wa-chat: oklch(0.185 0.018 238.2);
+  --wa-in: oklch(0.285 0.021 234.1);
+  --wa-in-foreground: oklch(0.944 0.005 228.8);
+  --wa-out: oklch(0.424 0.08 174.4);
+  --wa-out-foreground: oklch(0.944 0.005 228.8);
+  --wa-teal: oklch(0.651 0.128 170.4);
+  --wa-green: oklch(0.761 0.201 149.7);
+  --wa-tick: oklch(0.755 0.117 229.7);
+  --wa-meta: oklch(0.664 0.024 235.2);
+  --wa-divider: oklch(0.335 0.025 234.9);
+  --wa-highlight: oklch(0.6 0.13 100);
+  --wa-name-1: oklch(0.78 0.11 250);
+  --wa-name-2: oklch(0.78 0.12 20);
+  --wa-name-3: oklch(0.8 0.12 160);
+  --wa-name-4: oklch(0.78 0.12 300);
+  --wa-name-5: oklch(0.82 0.12 60);
+  --wa-name-6: oklch(0.78 0.1 200);
+}
+
+/* WhatsApp-style doodle chat background */
+.wa-doodle {
+  background-color: var(--wa-chat);
+  background-image: radial-gradient(
+      circle at 20% 30%,
+      color-mix(in oklch, var(--wa-panel-foreground) 4%, transparent) 0 6px,
+      transparent 7px
+    ),
+    radial-gradient(
+      circle at 70% 65%,
+      color-mix(in oklch, var(--wa-panel-foreground) 3%, transparent) 0 4px,
+      transparent 5px
+    ),
+    radial-gradient(
+      circle at 45% 85%,
+      color-mix(in oklch, var(--wa-panel-foreground) 3%, transparent) 0 8px,
+      transparent 9px
+    );
+  background-size: 180px 180px, 140px 140px, 220px 220px;
+}
