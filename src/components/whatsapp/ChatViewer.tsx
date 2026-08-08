@@ -285,6 +285,17 @@ export function ChatViewer() {
     [chat, activeId],
   );
 
+  const renameChat = useCallback(
+    (name: string) => {
+      persist({ chatName: name });
+      const entry = entries.find((e) => e.id === activeId);
+      if (entry) {
+        void putChat({ ...entry, chatName: name }).then(() => void refreshLibrary());
+      }
+    },
+    [persist, entries, activeId, refreshLibrary],
+  );
+
 
 
   const jumpTo = useCallback(
