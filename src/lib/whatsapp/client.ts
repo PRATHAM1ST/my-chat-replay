@@ -37,6 +37,7 @@ export class WaClient {
     this.worker.onmessage = (e: MessageEvent) => this.handle(e.data);
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private handle(d: any) {
     switch (d?.type) {
       case "progress":
@@ -93,6 +94,7 @@ export class WaClient {
     if (running) return running;
 
     const id = ++this.id;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const p = new Promise<any>((resolve, reject) => {
       this.pending.set(id, { resolve, reject });
       this.worker.postMessage({ type: "media", id, name });
