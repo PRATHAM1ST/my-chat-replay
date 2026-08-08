@@ -103,12 +103,18 @@ export function ChatViewer() {
         if (!parsed.messages.length) {
           throw new Error("No messages could be read from this export.");
         }
+        const id = entryId(file.name, file.size);
+        const stored = getPrefs(id);
+        setPrefs(stored);
         setChat(parsed);
         setMobileChatOpen(true);
-        setMeIndex(parsed.meIndex);
+        setMeIndex(
+          stored.meIndex !== undefined && stored.meIndex < parsed.senders.length
+            ? stored.meIndex
+            : parsed.meIndex,
+        );
         setBusy(false);
 
-        const id = entryId(file.name, file.size);
         const now = Date.now();
         await putChat({
           id,
@@ -116,7 +122,7 @@ export function ChatViewer() {
           size: file.size,
           addedAt: now,
           lastOpened: now,
-          chatName: parsed.chatName,
+          chatName: stored.chatName ?? parsed.chatName,
           msgCount: parsed.messages.length,
           mediaCount: parsed.mediaCount,
           ...(handle ? { handle } : {}),
