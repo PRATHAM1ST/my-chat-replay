@@ -59,7 +59,7 @@ export function MediaAttachment({ msg, client, onOpen }: Props) {
             className={
               sticker
                 ? "h-32 w-32 object-contain"
-                : "max-h-80 w-full max-w-xs rounded-lg object-cover"
+                : "max-h-80 max-w-full rounded-lg object-contain sm:max-w-xs"
             }
           />
         ) : (

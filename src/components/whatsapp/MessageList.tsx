@@ -54,7 +54,10 @@ export function MessageList({
 
   useEffect(() => {
     if (!scrollTarget) return;
-    virtualizer.scrollToIndex(scrollTarget.row, { align: "center" });
+    const id = requestAnimationFrame(() =>
+      virtualizer.scrollToIndex(scrollTarget.row, { align: "center" }),
+    );
+    return () => cancelAnimationFrame(id);
   }, [scrollTarget, virtualizer]);
 
   const items = virtualizer.getVirtualItems();
