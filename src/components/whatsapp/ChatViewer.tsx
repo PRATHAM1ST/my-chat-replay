@@ -3,18 +3,20 @@ import { WaClient } from "@/lib/whatsapp/client";
 import { lowerBound } from "@/lib/whatsapp/format";
 import type { Msg, ParsedChat } from "@/lib/whatsapp/types";
 import {
-  clearChats,
   entryId,
   fileFromEntry,
   getLastId,
   handlePermission,
   listChats,
+  pickArchive,
   putChat,
   removeChat,
   setLastId,
   type LibraryEntry,
 } from "@/lib/whatsapp/library";
 import { ChatHeader } from "./ChatHeader";
+import { ChatSidebar } from "./ChatSidebar";
+import { ContactInfo } from "./ContactInfo";
 import { DropZone } from "./DropZone";
 import { Lightbox } from "./Lightbox";
 import { MessageList } from "./MessageList";
@@ -45,6 +47,10 @@ export function ChatViewer() {
   const [scrollTarget, setScrollTarget] = useState<{ row: number; nonce: number } | null>(null);
   const nonce = useRef(0);
   const [lightbox, setLightbox] = useState<{ msg: Msg; url: string } | null>(null);
+  const [infoOpen, setInfoOpen] = useState(false);
+  const [mobileChatOpen, setMobileChatOpen] = useState(false);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const fallbackInput = useRef<HTMLInputElement>(null);
 
   const [entries, setEntries] = useState<LibraryEntry[]>([]);
   const [needsPermission, setNeedsPermission] = useState<Set<string>>(new Set());
@@ -93,6 +99,7 @@ export function ChatViewer() {
       });
       if (!parsed.messages.length) throw new Error("No messages could be read from this export.");
       setChat(parsed);
+      setMobileChatOpen(true);
       setMeIndex(parsed.meIndex);
       setBusy(false);
 
@@ -110,6 +117,8 @@ export function ChatViewer() {
         ...(handle ? { handle } : {}),
       });
       setLastId(id);
+      setActiveId(id);
+      void refreshLibrary();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       setBusy(false);
@@ -117,7 +126,7 @@ export function ChatViewer() {
       clientRef.current = null;
     }
     setBusyId(null);
-  }, []);
+  }, [refreshLibrary]);
 
   const openEntry = useCallback(
     async (entry: LibraryEntry) => {
@@ -147,10 +156,11 @@ export function ChatViewer() {
     [refreshLibrary],
   );
 
-  const clearEntries = useCallback(async () => {
-    await clearChats();
-    void refreshLibrary();
-  }, [refreshLibrary]);
+  const addArchive = useCallback(async () => {
+    const picked = await pickArchive();
+    if (picked) await handleFile(picked.file, picked.handle);
+    else fallbackInput.current?.click();
+  }, [handleFile]);
 
   // Load the library and silently reopen the last chat when access is still granted.
   const booted = useRef(false);
@@ -241,7 +251,7 @@ export function ChatViewer() {
     [chat, jumpTo],
   );
 
-  const reset = () => {
+  const closeChat = () => {
     clientRef.current?.destroy();
     clientRef.current = null;
     setChat(null);
@@ -253,10 +263,13 @@ export function ChatViewer() {
     setMediaOnly(false);
     setSearchOpen(false);
     setLightbox(null);
+    setInfoOpen(false);
+    setMobileChatOpen(false);
+    setActiveId(null);
     void refreshLibrary();
   };
 
-  if (!chat || !clientRef.current) {
+  if (!entries.length && !chat && !busy) {
     return (
       <DropZone
         onFile={handleFile}
@@ -264,32 +277,48 @@ export function ChatViewer() {
         phase={phase}
         pct={pct}
         error={error}
-        entries={entries}
-        needsPermission={needsPermission}
-        busyId={busyId}
-        onOpenEntry={openEntry}
-        onRemoveEntry={removeEntry}
-        onClearEntries={clearEntries}
       />
     );
   }
 
-  return (
-    <main className="flex h-[100dvh] flex-col bg-wa-chat">
-      <ChatHeader
-        chatName={chat.chatName}
-        senders={chat.senders}
-        meIndex={meIndex}
-        onMeChange={setMeIndex}
-        total={chat.messages.length}
-        searchOpen={searchOpen}
-        onToggleSearch={() => setSearchOpen((v) => !v)}
-        dark={dark}
-        onToggleDark={() => setDark((v) => !v)}
-        onClose={reset}
-      />
+  const client = clientRef.current;
 
-      {searchOpen && (
+  return (
+    <main className="relative flex h-[100dvh] overflow-hidden bg-wa-chat">
+      <input ref={fallbackInput} type="file" accept=".zip,.txt" className="hidden" onChange={(event) => {
+        const file = event.target.files?.[0];
+        if (file) void handleFile(file);
+        event.target.value = "";
+      }} />
+      <div className={`${mobileChatOpen ? "hidden" : "flex"} h-full w-full shrink-0 md:flex md:w-auto`}>
+        <ChatSidebar
+          entries={entries}
+          activeId={activeId}
+          needsPermission={needsPermission}
+          busyId={busyId}
+          onAdd={() => void addArchive()}
+          onOpen={(entry) => void openEntry(entry)}
+          onRemove={(entry) => void removeEntry(entry)}
+          dark={dark}
+          onToggleDark={() => setDark((value) => !value)}
+        />
+      </div>
+
+      <section className={`${mobileChatOpen ? "flex" : "hidden"} relative min-w-0 flex-1 flex-col bg-wa-chat md:flex`}>
+      {chat && client ? (
+        <>
+          <ChatHeader
+            chatName={chat.chatName}
+            senders={chat.senders}
+            meIndex={meIndex}
+            onMeChange={setMeIndex}
+            searchOpen={searchOpen}
+            onToggleSearch={() => setSearchOpen((v) => !v)}
+            onBack={closeChat}
+            onOpenInfo={() => setInfoOpen(true)}
+          />
+
+          {searchOpen && (
         <SearchBar
           query={query}
           onQuery={setQuery}
@@ -304,25 +333,34 @@ export function ChatViewer() {
           onMediaOnly={setMediaOnly}
           onJumpDate={jumpDate}
         />
-      )}
+          )}
 
-      <MessageList
+          <MessageList
         messages={chat.messages}
         view={view}
         senders={chat.senders}
         meIndex={meIndex}
-        client={clientRef.current}
+        client={client}
         query={debounced}
         matchSet={matchSet}
         activeIndex={activeIndex}
         scrollTarget={scrollTarget}
         onOpenMedia={(msg, url) => setLightbox({ msg, url })}
-      />
+          />
+        </>
+      ) : (
+        <div className="flex flex-1 items-center justify-center px-6 text-center">
+          <div>
+            <h2 className="text-3xl font-light text-wa-panel-foreground">Chat Replay</h2>
+            <p className="mt-3 text-sm text-wa-meta">Select a chat from your local library</p>
+          </div>
+        </div>
+      )}
+      </section>
 
-      <footer className="border-t border-wa-divider bg-wa-panel px-4 py-2 text-center text-xs text-wa-meta">
-        {view.length.toLocaleString()} of {chat.messages.length.toLocaleString()} messages shown ·{" "}
-        {chat.mediaCount.toLocaleString()} attachments · read-only local archive
-      </footer>
+      {infoOpen && chat && client && (
+        <ContactInfo chat={chat} client={client} onClose={() => setInfoOpen(false)} onOpenMedia={(msg, url) => setLightbox({ msg, url })} />
+      )}
 
       <Lightbox item={lightbox} onClose={() => setLightbox(null)} />
     </main>
