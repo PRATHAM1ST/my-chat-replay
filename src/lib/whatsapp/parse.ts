@@ -65,7 +65,15 @@ export function parseChat(raw: string, opts: ParseOptions = {}): ParsedChat {
   const pushLine = (text: string, ts: number, sender: number) => {
     let body = text;
     let file: string | undefined;
+    let label: string | undefined;
+    let edited = false;
     let kind: MsgKind = sender < 0 ? "system" : "text";
+
+    const editedMark = /\s*<this message was edited>\s*$/i;
+    if (editedMark.test(body)) {
+      edited = true;
+      body = body.replace(editedMark, "");
+    }
 
     const ios = ATTACHED_IOS.exec(body);
     const android = ios ? null : ATTACHED_ANDROID.exec(body.trim());
@@ -77,12 +85,22 @@ export function parseChat(raw: string, opts: ParseOptions = {}): ParsedChat {
       file = resolved;
       kind = kindFromFileName(name);
       body = ios ? body.replace(ATTACHED_IOS, "").trim() : "";
-      if (!body && !resolved) body = name;
+      if (!resolved) label = name;
       mediaCount++;
     } else if (sender >= 0) {
-      const k = omittedKind(body);
-      if (k) {
-        kind = k;
+      // "<Media omitted>" / "video omitted", sometimes followed by a file name
+      const nl = body.indexOf("\n");
+      const first = (nl === -1 ? body : body.slice(0, nl)).trim();
+      if (/omitted/i.test(first)) {
+        const rest = nl === -1 ? "" : body.slice(nl + 1).trim();
+        const named = rest && rest.length <= 120 && !rest.includes("\n") ? rest : undefined;
+        const resolved = named
+          ? lookup.get((named.split("/").pop() ?? named).toLowerCase())
+          : undefined;
+        kind = omittedKind(first) ?? (named ? kindFromFileName(named) : "document");
+        if (resolved) file = resolved;
+        else label = named ?? first.replace(/[<>]/g, "");
+        body = named ? "" : rest;
         mediaCount++;
       }
     }
@@ -94,6 +112,8 @@ export function parseChat(raw: string, opts: ParseOptions = {}): ParsedChat {
       text: body,
       kind,
       ...(file ? { file } : {}),
+      ...(label ? { label } : {}),
+      ...(edited ? { edited: true } : {}),
     });
   };
 

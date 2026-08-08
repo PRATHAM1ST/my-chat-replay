@@ -10,6 +10,10 @@ export interface Msg {
   text: string;
   /** attachment file name inside the zip, when resolvable */
   file?: string;
+  /** file name mentioned in the transcript but not present in the archive */
+  label?: string;
+  /** WhatsApp appended "<This message was edited>" */
+  edited?: boolean;
   kind: MsgKind;
 }
 

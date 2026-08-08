@@ -40,6 +40,35 @@ function Highlighted({ text, query }: { text: string; query: string }) {
   return <>{parts}</>;
 }
 
+const URL_RE = /(https?:\/\/[^\s<>()]+|www\.[^\s<>()]+)/g;
+
+/** Renders message text with clickable links, keeping search highlighting. */
+function Body({ text, query }: { text: string; query: string }) {
+  const out: React.ReactNode[] = [];
+  let last = 0;
+  let k = 0;
+  for (const m of text.matchAll(URL_RE)) {
+    const at = m.index ?? 0;
+    if (at > last) out.push(<Highlighted key={k++} text={text.slice(last, at)} query={query} />);
+    const raw = m[0];
+    out.push(
+      <a
+        key={k++}
+        href={raw.startsWith("http") ? raw : `https://${raw}`}
+        target="_blank"
+        rel="noopener noreferrer nofollow"
+        className="break-all text-wa-link underline decoration-wa-link/40 underline-offset-2"
+      >
+        <Highlighted text={raw} query={query} />
+      </a>,
+    );
+    last = at + raw.length;
+  }
+  if (last < text.length)
+    out.push(<Highlighted key={k++} text={text.slice(last)} query={query} />);
+  return <>{out}</>;
+}
+
 export const MessageBubble = memo(function MessageBubble({
   msg,
   isMe,
@@ -89,12 +118,17 @@ export const MessageBubble = memo(function MessageBubble({
         )}
 
         <div className="flex flex-wrap items-end justify-end gap-x-2">
-          {msg.text && (
+          {msg.text ? (
             <p className="whitespace-pre-wrap break-words px-1 text-[15px] leading-[1.35]">
-              <Highlighted text={msg.text} query={isMatch ? query : ""} />
+              <Body text={msg.text} query={isMatch ? query : ""} />
+            </p>
+          ) : hasMedia ? null : (
+            <p className="px-1 text-[15px] italic leading-[1.35] text-wa-meta">
+              Message not included in export
             </p>
           )}
           <span className="ml-auto flex shrink-0 items-center gap-1 pr-0.5 text-[11px] text-wa-meta">
+            {msg.edited && <span className="italic">edited</span>}
             {formatTime(msg.ts)}
             {isMe ? (
               <CheckCheck className="size-3.5 text-wa-tick" />
