@@ -14,7 +14,7 @@ function post(msg: unknown, transfer?: Transferable[]) {
 function chatNameFromTxt(name: string) {
   const base = (name.split("/").pop() ?? name).replace(/\.txt$/i, "");
   const m = /WhatsApp Chat (?:with|-)\s*(.+)/i.exec(base);
-  return m ? m[1].trim() : base === "_chat" ? "Chat" : base;
+  return m?.[1] ? m[1].trim() : base === "_chat" ? "Chat" : base;
 }
 
 async function load(file: File) {
@@ -74,10 +74,11 @@ function query(id: number, text: string, sender: number | null, mediaOnly: boole
   const matches: number[] = [];
   for (let i = 0; i < messages.length; i++) {
     const m = messages[i];
+    if (!m) continue;
     if (sender !== null && m.s !== sender) continue;
     if (mediaOnly && !MEDIA_KINDS.includes(m.kind)) continue;
     view.push(i);
-    if (q && haystack[i].includes(q)) matches.push(i);
+    if (q && (haystack[i] ?? "").includes(q)) matches.push(i);
   }
   const v = new Int32Array(view);
   const mt = new Int32Array(matches);
