@@ -1,5 +1,6 @@
 import { X } from "lucide-react";
 import type { Msg } from "@/lib/whatsapp/types";
+import { Button } from "@/components/ui/button";
 
 interface Props {
   item: { msg: Msg; url: string } | null;
@@ -11,18 +12,20 @@ export function Lightbox({ item, onClose }: Props) {
   const { msg, url } = item;
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-wa-panel-foreground/95 p-4"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
     >
-      <button
+      <Button
+        variant="ghost"
+        size="icon"
         onClick={onClose}
         aria-label="Close preview"
-        className="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20"
+        className="absolute right-4 top-4 rounded-full bg-wa-panel/10 text-wa-panel hover:bg-wa-panel/20"
       >
         <X className="size-5" />
-      </button>
+      </Button>
       {msg.kind === "video" ? (
         <video
           src={url}

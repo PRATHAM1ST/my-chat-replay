@@ -1,26 +1,9 @@
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
+@import "@fontsource/noto-color-emoji";
 
 @custom-variant dark (&:is(.dark *));
-
-/*
- * Full colour emoji coverage (Noto Color Emoji, the set WhatsApp Web uses).
- * The unicode-range is restricted to emoji blocks so the font never hijacks
- * plain ASCII digits, #, or * (which it also ships as keycap glyphs).
- */
-@font-face {
-  font-family: "WA Emoji";
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url(https://fonts.gstatic.com/s/notocoloremoji/v39/Yq6P-KqIXTD0t4D9z1ESnKM3-HpFab4.ttf)
-    format("truetype");
-  unicode-range: U+200D, U+203C, U+2049, U+20E3, U+2122, U+2139, U+2194-21AA, U+231A-231B,
-    U+2328, U+23CF-23FA, U+24C2, U+25AA-25FE, U+2600-27BF, U+2934-2935, U+2B00-2BFF, U+3030,
-    U+303D, U+3297, U+3299, U+FE0F, U+1F000-1FAFF, U+E0020-E007F;
-}
-
 
 /*
  * Design system definition.
@@ -163,9 +146,9 @@
 
 /* ---------- WhatsApp viewer design tokens ---------- */
 @theme inline {
-  --font-sans: "Segoe UI", Helvetica, "Helvetica Neue", system-ui, -apple-system, "WA Emoji",
-    "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
-
+  --font-sans:
+    "Segoe UI", Helvetica, "Helvetica Neue", system-ui, -apple-system, "Noto Color Emoji",
+    "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
 
   --color-wa-panel: var(--wa-panel);
   --color-wa-panel-foreground: var(--wa-panel-foreground);
@@ -249,7 +232,6 @@
   opacity: 0.07;
 }
 
-
 /* Authentic bubble corner tails (8x13, WhatsApp Web geometry) */
 .wa-bubble {
   position: relative;
@@ -293,3 +275,12 @@
   line-height: 1.15;
 }
 
+.wa-emoji-transparent {
+  background: transparent;
+  box-shadow: none;
+}
+
+.wa-emoji-transparent.wa-bubble-tail-in::before,
+.wa-emoji-transparent.wa-bubble-tail-out::before {
+  display: none;
+}
