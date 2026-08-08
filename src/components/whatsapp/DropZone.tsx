@@ -1,16 +1,36 @@
 import { useCallback, useRef, useState } from "react";
 import { Upload, ShieldCheck, FileArchive } from "lucide-react";
 import { formatBytes } from "@/lib/whatsapp/format";
+import { pickArchive, supportsHandles, type LibraryEntry } from "@/lib/whatsapp/library";
+import { ChatLibrary } from "./ChatLibrary";
 
 interface Props {
-  onFile: (file: File) => void;
+  onFile: (file: File, handle?: FileSystemFileHandle) => void;
   busy: boolean;
   phase: string;
   pct: number;
   error: string | null;
+  entries: LibraryEntry[];
+  needsPermission: Set<string>;
+  busyId: string | null;
+  onOpenEntry: (entry: LibraryEntry) => void;
+  onRemoveEntry: (entry: LibraryEntry) => void;
+  onClearEntries: () => void;
 }
 
-export function DropZone({ onFile, busy, phase, pct, error }: Props) {
+export function DropZone({
+  onFile,
+  busy,
+  phase,
+  pct,
+  error,
+  entries,
+  needsPermission,
+  busyId,
+  onOpenEntry,
+  onRemoveEntry,
+  onClearEntries,
+}: Props) {
   const [over, setOver] = useState(false);
   const input = useRef<HTMLInputElement>(null);
 
@@ -21,6 +41,17 @@ export function DropZone({ onFile, busy, phase, pct, error }: Props) {
     },
     [onFile],
   );
+
+  // Prefer the native picker: it returns a handle we can remember for next time.
+  const browse = useCallback(async () => {
+    if (busy) return;
+    if (supportsHandles) {
+      const picked = await pickArchive();
+      if (picked) onFile(picked.file, picked.handle);
+      return;
+    }
+    input.current?.click();
+  }, [busy, onFile]);
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-wa-chat px-5 py-12">
@@ -46,7 +77,7 @@ export function DropZone({ onFile, busy, phase, pct, error }: Props) {
             setOver(false);
             pick(e.dataTransfer.files);
           }}
-          onClick={() => input.current?.click()}
+          onClick={browse}
           className={`cursor-pointer rounded-2xl border-2 border-dashed bg-wa-in p-10 text-center transition-colors ${
             over ? "border-wa-green bg-wa-out/40" : "border-wa-divider"
           }`}
@@ -75,6 +106,15 @@ export function DropZone({ onFile, busy, phase, pct, error }: Props) {
             </div>
           )}
         </div>
+
+        <ChatLibrary
+          entries={entries}
+          needsPermission={needsPermission}
+          busyId={busyId}
+          onOpen={onOpenEntry}
+          onRemove={onRemoveEntry}
+          onClear={onClearEntries}
+        />
 
         {error && (
           <p className="mt-4 rounded-lg bg-destructive/10 px-4 py-3 text-sm text-destructive">

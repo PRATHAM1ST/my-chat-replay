@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { dayKey, formatDay } from "@/lib/whatsapp/format";
 import type { WaClient } from "@/lib/whatsapp/client";
@@ -19,6 +19,83 @@ interface Props {
   onOpenMedia: (msg: Msg, url: string) => void;
 }
 
+/** Cheap height guess so the scrollbar is stable before rows are measured. */
+function estimate(msg: Msg | undefined, newDay: boolean): number {
+  if (!msg) return 64;
+  let h = 0;
+  if (newDay) h += 44;
+  switch (msg.kind) {
+    case "system":
+      return h + 36;
+    case "image":
+    case "video":
+      return h + (msg.file ? 268 : 52);
+    case "sticker":
+      return h + 150;
+    case "audio":
+      return h + 68;
+    case "document":
+      return h + 60;
+    default: {
+      const lines = Math.max(1, Math.ceil(msg.text.length / 42));
+      return h + 30 + lines * 19;
+    }
+  }
+}
+
+interface RowProps {
+  msg: Msg;
+  prevTs: number | null;
+  prevSender: number | null;
+  senders: string[];
+  meIndex: number;
+  client: WaClient;
+  query: string;
+  isMatch: boolean;
+  isActive: boolean;
+  onOpenMedia: (msg: Msg, url: string) => void;
+}
+
+const Row = memo(function Row({
+  msg,
+  prevTs,
+  prevSender,
+  senders,
+  meIndex,
+  client,
+  query,
+  isMatch,
+  isActive,
+  onOpenMedia,
+}: RowProps) {
+  const newDay = prevTs === null || dayKey(prevTs) !== dayKey(msg.ts);
+  const showName = senders.length > 2 && (newDay || prevSender === null || prevSender !== msg.s);
+
+  return (
+    <>
+      {newDay && (
+        <div className="flex justify-center py-3">
+          <span className="rounded-lg bg-wa-panel px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-wa-meta shadow-sm">
+            {formatDay(msg.ts)}
+          </span>
+        </div>
+      )}
+      <MessageBubble
+        msg={msg}
+        isMe={msg.s === meIndex}
+        senderName={senders[msg.s] ?? ""}
+        showName={showName}
+        colorIdx={(msg.s % 6) + 1}
+        query={query}
+        isMatch={isMatch}
+        isActive={isActive}
+        client={client}
+        onOpenMedia={onOpenMedia}
+      />
+    </>
+  );
+});
+
 export function MessageList({
   messages,
   view,
@@ -33,14 +110,23 @@ export function MessageList({
 }: Props) {
   const parentRef = useRef<HTMLDivElement>(null);
 
+  const estimateSize = useCallback(
+    (index: number) => {
+      const msg = messages[view[index] ?? 0];
+      const prev = index > 0 ? messages[view[index - 1] ?? 0] : undefined;
+      return estimate(msg, !prev || !msg || dayKey(prev.ts) !== dayKey(msg.ts));
+    },
+    [messages, view],
+  );
+
   const virtualizer = useVirtualizer({
     count: view.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 64,
-    overscan: 14,
+    estimateSize,
+    overscan: 8,
     useAnimationFrameWithResizeObserver: true,
     useFlushSync: false,
-    getItemKey: (i) => view[i] ?? i,
+    getItemKey: useCallback((i: number) => view[i] ?? i, [view]),
   });
 
   // stick to the newest message when a new chat / filter view loads
@@ -61,53 +147,58 @@ export function MessageList({
   }, [scrollTarget, virtualizer]);
 
   const items = virtualizer.getVirtualItems();
-  const colorFor = useMemo(() => {
-    const map = new Map<number, number>();
-    senders.forEach((_, i) => map.set(i, (i % 6) + 1));
-    return map;
-  }, [senders]);
+  const measure = virtualizer.measureElement;
+  const totalSize = virtualizer.getTotalSize();
+
+  // sticky date chip for whatever is at the top of the viewport
+  const topDay = useMemo(() => {
+    const first = items[0];
+    if (!first) return null;
+    const msg = messages[view[first.index] ?? 0];
+    return msg ? formatDay(msg.ts) : null;
+  }, [items, messages, view]);
 
   return (
-    <div ref={parentRef} className="wa-doodle flex-1 overflow-y-auto overscroll-contain">
-      <div className="relative w-full" style={{ height: `${virtualizer.getTotalSize()}px` }}>
-        {items.map((vi) => {
-          const gi = view[vi.index] ?? 0;
-          const msg = messages[gi];
-          if (!msg) return null;
-          const prev = vi.index > 0 ? messages[view[vi.index - 1] ?? 0] : undefined;
-          const newDay = !prev || dayKey(prev.ts) !== dayKey(msg.ts);
-          const showName = senders.length > 2 && (newDay || !prev || prev.s !== msg.s);
+    <div className="relative flex min-h-0 flex-1">
+      {topDay && (
+        <div className="pointer-events-none absolute left-0 right-0 top-2 z-10 flex justify-center">
+          <span className="rounded-lg bg-wa-panel/90 px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-wa-meta shadow-sm backdrop-blur">
+            {topDay}
+          </span>
+        </div>
+      )}
+      <div ref={parentRef} className="wa-doodle flex-1 overflow-y-auto overscroll-contain">
+        <div className="relative w-full" style={{ height: `${totalSize}px` }}>
+          {items.map((vi) => {
+            const gi = view[vi.index] ?? 0;
+            const msg = messages[gi];
+            if (!msg) return null;
+            const prev = vi.index > 0 ? messages[view[vi.index - 1] ?? 0] : undefined;
 
-          return (
-            <div
-              key={vi.key}
-              data-index={vi.index}
-              ref={virtualizer.measureElement}
-              className="absolute left-0 top-0 w-full"
-              style={{ transform: `translateY(${vi.start}px)` }}
-            >
-              {newDay && (
-                <div className="flex justify-center py-3">
-                  <span className="rounded-lg bg-wa-panel px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-wa-meta shadow-sm">
-                    {formatDay(msg.ts)}
-                  </span>
-                </div>
-              )}
-              <MessageBubble
-                msg={msg}
-                isMe={msg.s === meIndex}
-                senderName={senders[msg.s] ?? ""}
-                showName={showName}
-                colorIdx={colorFor.get(msg.s) ?? 1}
-                query={query}
-                isMatch={matchSet.has(gi)}
-                isActive={activeIndex === gi}
-                client={client}
-                onOpenMedia={onOpenMedia}
-              />
-            </div>
-          );
-        })}
+            return (
+              <div
+                key={vi.key}
+                data-index={vi.index}
+                ref={measure}
+                className="absolute left-0 top-0 w-full will-change-transform"
+                style={{ transform: `translateY(${vi.start}px)`, contain: "layout style" }}
+              >
+                <Row
+                  msg={msg}
+                  prevTs={prev ? prev.ts : null}
+                  prevSender={prev ? prev.s : null}
+                  senders={senders}
+                  meIndex={meIndex}
+                  client={client}
+                  query={query}
+                  isMatch={matchSet.has(gi)}
+                  isActive={activeIndex === gi}
+                  onOpenMedia={onOpenMedia}
+                />
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
