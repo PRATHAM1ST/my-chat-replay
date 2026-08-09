@@ -60,7 +60,7 @@ export function NavRail({
   return (
     <nav className="hidden w-[68px] shrink-0 flex-col items-center gap-1 border-r border-wa-divider bg-wa-panel py-3 md:flex">
       <RailButton label="Chats" active onClick={() => undefined}>
-        <MessageSquare className="size-[22px]" />
+        <Logo size={22} />
       </RailButton>
       <RailButton
         label="Search messages"
