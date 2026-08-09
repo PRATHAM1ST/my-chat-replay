@@ -492,6 +492,8 @@ export function ChatViewer() {
           onAdd={() => void addArchive()}
           onOpen={(entry) => void openEntry(entry)}
           onRemove={(entry) => void removeEntry(entry)}
+          onClearAll={() => void clearAll()}
+
           dark={dark}
           onToggleDark={() => setDark((value) => !value)}
         />
