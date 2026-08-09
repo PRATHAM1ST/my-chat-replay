@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
+  ArrowLeft,
   CalendarDays,
   ChevronDown,
   ChevronUp,
@@ -156,8 +157,42 @@ export function SearchPanel({
   }, [active, busy, matches.length, matchPos]);
 
   return (
-    <aside className="wa-slide-in absolute inset-0 z-30 flex min-h-0 flex-col border-l border-wa-divider bg-wa-surface md:static md:w-[400px] md:shrink-0 lg:w-[430px]">
-      <header className="flex h-[60px] shrink-0 items-center gap-3 border-b border-wa-divider bg-wa-panel pl-2 pr-3 text-wa-panel-foreground">
+    <aside className="wa-slide-in absolute inset-0 z-30 flex min-h-0 flex-col border-l border-wa-divider bg-wa-surface dark:border-transparent md:static md:w-[400px] md:shrink-0 lg:w-[430px]">
+      {/* Phones get the app's own search bar: one stadium pill holding the
+          back arrow, the field and the jump-to-date calendar. */}
+      <header className="shrink-0 px-4 pb-2 pt-3 md:hidden">
+        <div className="flex h-[47px] items-center gap-1 rounded-full bg-wa-system pl-1.5 pr-1.5">
+          <IconButton
+            onClick={onClose}
+            aria-label="Close search"
+            className="size-9 dark:text-white"
+          >
+            <ArrowLeft className="size-5" />
+          </IconButton>
+          <input
+            autoFocus
+            value={query}
+            onChange={(e) => onQuery(e.target.value)}
+            onKeyDown={onKeyDown}
+            placeholder="Search..."
+            className="min-w-0 flex-1 bg-transparent text-[15px] text-wa-panel-foreground caret-wa-green outline-none placeholder:text-wa-meta"
+          />
+          <label
+            className="grid size-9 shrink-0 cursor-pointer place-items-center rounded-full text-wa-icon transition-colors hover:bg-white/5 dark:text-white"
+            title="Jump to date"
+          >
+            <CalendarDays className="size-5" />
+            <input
+              type="date"
+              onChange={(e) => onJumpDate(e.target.value)}
+              className="absolute size-9 cursor-pointer opacity-0 [color-scheme:light] dark:[color-scheme:dark]"
+              aria-label="Jump to date"
+            />
+          </label>
+        </div>
+      </header>
+
+      <header className="hidden h-[60px] shrink-0 items-center gap-3 border-b border-wa-divider bg-wa-panel pl-2 pr-3 text-wa-panel-foreground md:flex">
         <IconButton onClick={onClose} aria-label="Close search">
           <X className="size-5" />
         </IconButton>
@@ -172,14 +207,15 @@ export function SearchPanel({
         </div>
       </header>
 
-      <div className="shrink-0 space-y-2.5 border-b border-wa-divider px-3 py-3">
+      <div className="shrink-0 space-y-2.5 border-b border-wa-divider px-3 py-2 dark:border-transparent md:py-3">
         <SearchField
-          autoFocus
+          autoFocus={false}
           value={query}
           onValue={onQuery}
           onKeyDown={onKeyDown}
           placeholder="Search…"
           icon={<Search className="size-[17px]" />}
+          className="hidden md:flex"
         />
 
         <div className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-0.5">
@@ -215,7 +251,7 @@ export function SearchPanel({
             </Menu>
           )}
 
-          <label className="flex cursor-pointer items-center gap-1.5 rounded-full bg-black/[0.05] px-3 py-[5px] text-[13px] font-medium text-wa-meta transition-colors hover:bg-black/[0.09] dark:bg-white/[0.07] dark:hover:bg-white/[0.12]">
+          <label className="hidden cursor-pointer items-center gap-1.5 rounded-full bg-black/[0.05] px-3 py-[5px] text-[13px] font-medium text-wa-meta transition-colors hover:bg-black/[0.09] dark:bg-white/[0.07] dark:hover:bg-white/[0.12] md:flex">
             <CalendarDays className="size-3.5 shrink-0" />
             <input
               type="date"
@@ -227,7 +263,27 @@ export function SearchPanel({
           </label>
         </div>
 
-        <p className="px-1 text-[12.5px] text-wa-meta">{counter}</p>
+        <div className="flex items-center px-1">
+          <p className="min-w-0 flex-1 text-[12.5px] text-wa-meta">{counter}</p>
+          <div className="flex shrink-0 items-center md:hidden">
+            <IconButton
+              onClick={onPrev}
+              disabled={!matches.length}
+              aria-label="Previous result"
+              className="size-8"
+            >
+              <ChevronUp className="size-[18px]" />
+            </IconButton>
+            <IconButton
+              onClick={onNext}
+              disabled={!matches.length}
+              aria-label="Next result"
+              className="size-8"
+            >
+              <ChevronDown className="size-[18px]" />
+            </IconButton>
+          </div>
+        </div>
       </div>
 
       <div ref={listRef} className="wa-scroller min-h-0 flex-1 overflow-y-auto">

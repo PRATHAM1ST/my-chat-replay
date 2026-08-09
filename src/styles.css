@@ -242,6 +242,10 @@
   --color-wa-system-foreground: var(--wa-system-foreground);
   --color-wa-e2e: var(--wa-e2e);
   --color-wa-e2e-foreground: var(--wa-e2e-foreground);
+  --color-wa-meta-out: var(--wa-meta-out);
+  --color-wa-accent-soft: var(--wa-accent-soft);
+  --color-wa-accent-soft-foreground: var(--wa-accent-soft-foreground);
+  --color-wa-chip-outline: var(--wa-chip-outline);
 
   /* accents */
   --color-wa-teal: var(--wa-teal);
@@ -276,6 +280,10 @@
   --wa-system-foreground: oklch(0.4963 0.0261 233.85); /* #54656f */
   --wa-e2e: oklch(0.9543 0.0468 83.94); /* #ffeecd  encryption notice only */
   --wa-e2e-foreground: oklch(0.4963 0.0261 233.85); /* #54656f */
+  --wa-meta-out: oklch(0.5589 0.0255 233.72); /* light keeps the plain gray */
+  --wa-accent-soft: oklch(0.9575 0.0669 141.12); /* #d9fdd3 */
+  --wa-accent-soft-foreground: oklch(0.5352 0.1016 174.23); /* #008069 */
+  --wa-chip-outline: oklch(0.9436 0.0051 228.82); /* #e9edef */
 
   /* accents — light */
   --wa-teal: oklch(0.5352 0.1016 174.23); /* #008069 */
@@ -309,48 +317,54 @@
 }
 
 .dark {
-  /* surfaces — dark */
-  --wa-app: oklch(0.1854 0.0182 238.21); /* #0b141a */
-  --wa-surface: oklch(0.2153 0.0187 235.13); /* #111b21 */
-  --wa-panel: oklch(0.2851 0.0209 234.05); /* #202c33 */
-  --wa-panel-foreground: oklch(0.9436 0.0051 228.82); /* #e9edef */
-  --wa-elevated: oklch(0.2851 0.0209 234.05); /* #202c33 */
-  --wa-chat: oklch(0.1646 0.0142 243.8); /* #090f14 — sampled; darker than Web */
-  --wa-hover: oklch(0.2851 0.0209 234.05); /* #202c33 */
-  --wa-active: oklch(0.3351 0.0253 234.86); /* #2a3942 */
-  --wa-input: oklch(0.2851 0.0209 234.05); /* #202c33 */
+  /* surfaces — dark. The current WhatsApp Android theme is near-black and
+     neutral; every value is the median sampled off the user's own phone. */
+  --wa-app: oklch(0.1701 0.009 240.51); /* #0c1013 page + headers + nav */
+  --wa-surface: oklch(0.1701 0.009 240.51); /* #0c1013 chat list body */
+  --wa-panel: oklch(0.1701 0.009 240.51); /* #0c1013 flat, no toolbar band */
+  --wa-panel-foreground: oklch(0.9683 0.0101 228.89); /* #eef6fa */
+  --wa-elevated: oklch(0.2726 0.0113 237.07); /* #22282c menus, dialogs */
+  --wa-chat: oklch(0.1469 0.0112 246.61); /* #070b0f wallpaper base */
+  --wa-hover: oklch(0.2061 0.0086 240.33); /* #14181b */
+  --wa-active: oklch(0.243 0.014 239.25); /* #1a2126 */
+  --wa-input: oklch(0.2726 0.0113 237.07); /* #22282c home search pill */
 
-  /* bubbles — dark. The user-supplied ground truth is WhatsApp for Android;
-     every value below is the median sampled off their real screenshots:
-     sent #134d37 forest green, received #1f272a neutral charcoal (less blue
-     than the Web client), date chips on the same charcoal surface. */
-  --wa-in: oklch(0.2662 0.0126 222.54); /* #1f272a */
-  --wa-in-foreground: oklch(0.9436 0.0051 228.82); /* #e9edef */
-  --wa-out: oklch(0.377 0.0699 163.42); /* #144d37 */
-  --wa-out-foreground: oklch(0.9436 0.0051 228.82); /* #e9edef */
-  --wa-system: oklch(0.2662 0.0126 222.54); /* #1f272a — same surface as in */
-  --wa-system-foreground: oklch(0.6637 0.0236 235.2); /* #8696a0 */
-  --wa-e2e: oklch(0.2662 0.0126 222.54); /* #1f272a */
+  /* bubbles — dark */
+  --wa-in: oklch(0.2667 0.0136 229.54); /* #1f272b */
+  --wa-in-foreground: oklch(0.9683 0.0101 228.89); /* #eef6fa */
+  --wa-out: oklch(0.377 0.0699 163.42); /* #134d37 */
+  --wa-out-foreground: oklch(0.9683 0.0101 228.89); /* #eef6fa */
+  /* the pill surface shared by date chips and the in-chat search bar */
+  --wa-system: oklch(0.2061 0.0086 240.33); /* #14181b */
+  --wa-system-foreground: oklch(0.6626 0.0083 228.92); /* #8e9497 */
+  --wa-e2e: oklch(0.2061 0.0086 240.33); /* #14181b */
   --wa-e2e-foreground: oklch(0.8846 0.1189 83.16); /* #ffd279 amber on dark */
+  /* the whitened green the sent-bubble stamp uses */
+  --wa-meta-out: oklch(0.7295 0.0541 169.56); /* #86b3a2 */
+  /* dark-green containers with pale-mint content (selected chips, nav pill) */
+  --wa-accent-soft: oklch(0.3014 0.0494 167.31); /* #103629 */
+  --wa-accent-soft-foreground: oklch(0.9603 0.0534 152.65); /* #d8fde1 */
+  --wa-chip-outline: oklch(0.3143 0.0113 248.19); /* #2d3237 */
 
   /* accents — dark. Android's current brand green, sampled off the real
      screenshots (#21c063), not the Web client's legacy teal. */
   --wa-teal: oklch(0.7102 0.1817 151.18); /* #21c063 */
   --wa-green: oklch(0.7102 0.1817 151.18); /* #21c063 */
-  --wa-tick: oklch(0.7549 0.117 229.73); /* #53bdeb */
-  --wa-meta: oklch(0.6637 0.0236 235.2); /* #8696a0 */
+  --wa-tick: oklch(0.7421 0.0814 208.88); /* #69bac7 — teal, not sky blue */
+  --wa-meta: oklch(0.7146 0.0108 238.58); /* #9da4a9 */
   --wa-icon: oklch(0.7817 0.0167 233.09); /* #aebac1 */
   --wa-link: oklch(0.7549 0.117 229.73); /* #53bdeb */
-  --wa-divider: oklch(0.29 0.0198 236.29); /* #222d34 */
+  --wa-divider: oklch(0.2667 0.0136 229.54); /* #1f272b — barely-there lines */
   --wa-highlight: oklch(0.6 0.13 100);
   --wa-highlight-foreground: oklch(0.9436 0.0051 228.82);
 
   --wa-doodle-color: oklch(0.9436 0.0051 228.82);
   --wa-doodle-opacity: 0.035;
 
-  /* group participant name colours — WhatsApp's dark palette */
+  /* group participant name colours — WhatsApp's dark palette. Slot 2 is the
+     lavender the app gave the other party in the user's own 1:1 chat. */
   --wa-name-1: oklch(0.6433 0.2181 348.45);
-  --wa-name-2: oklch(0.6518 0.115 184.34);
+  --wa-name-2: oklch(0.7203 0.1334 290.03); /* #a495f2 */
   --wa-name-3: oklch(0.797 0.1039 224.94);
   --wa-name-4: oklch(0.7909 0.1335 87.57);
   --wa-name-5: oklch(0.7615 0.1421 20.94);
@@ -425,7 +439,7 @@
  * ------------------------------------------------------------------------ */
 .wa-bubble {
   position: relative;
-  border-radius: 12px;
+  border-radius: 8px;
   box-shadow: var(--wa-shadow-bubble);
 }
 .wa-bubble-tail-in {
@@ -451,6 +465,15 @@
   right: -8px;
   background-color: var(--wa-out);
   clip-path: path("M0 0 L0 13 C0.4 8 3.5 2.8 8 0 Z");
+}
+
+/* Quote-card names: the accent colours the bar; in dark the name itself is
+ * near-white with only a tint of the accent, exactly like the current app. */
+.wa-quote-name {
+  color: var(--q);
+}
+.dark .wa-quote-name {
+  color: color-mix(in oklab, var(--q) 25%, oklch(0.9683 0.0101 228.89));
 }
 
 /* Search hit that is currently selected — WhatsApp flashes the whole bubble. */

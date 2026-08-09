@@ -262,10 +262,10 @@ export function ChatSidebar({
           </Menu>
         </header>
       ) : (
-        <header className="flex h-[60px] shrink-0 items-center justify-between gap-2 border-b border-wa-divider bg-wa-panel pl-3 pr-2">
-          <div className="flex min-w-0 items-center gap-2">
+        <header className="flex h-[64px] shrink-0 items-center justify-between gap-2 border-b border-wa-divider bg-wa-panel pl-4 pr-2 dark:border-transparent">
+          <div className="flex min-w-0 items-center gap-2.5">
             <Logo size={26} />
-            <h1 className="truncate text-[21px] font-bold tracking-tight text-wa-panel-foreground">
+            <h1 className="truncate text-[23px] font-bold tracking-tight text-wa-panel-foreground">
               Chats
             </h1>
           </div>
@@ -315,8 +315,9 @@ export function ChatSidebar({
         <SearchField
           value={query}
           onValue={setQuery}
-          placeholder="Search or start a new chat"
+          placeholder="Search your chats"
           icon={<Search className="size-[17px]" />}
+          className="h-[47px] rounded-full px-4"
         />
         <div className="flex items-center gap-2 overflow-x-auto pb-0.5">
           <Chip active={filter === "all"} onClick={() => setFilter("all")}>
@@ -367,7 +368,7 @@ export function ChatSidebar({
           type="button"
           onClick={onAdd}
           aria-label="Open a chat export"
-          className="absolute bottom-6 right-6 z-10 flex size-14 cursor-pointer items-center justify-center rounded-2xl bg-wa-green text-white shadow-[var(--wa-shadow-float)] transition-transform hover:scale-105 active:scale-95"
+          className="absolute bottom-5 right-4 z-10 flex size-[55px] cursor-pointer items-center justify-center rounded-[17px] bg-wa-green text-white shadow-[var(--wa-shadow-float)] transition-transform hover:scale-105 active:scale-95 dark:text-[#0a0f13]"
         >
           <MessageSquarePlus className="size-6" />
         </button>

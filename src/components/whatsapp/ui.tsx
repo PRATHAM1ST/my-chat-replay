@@ -232,12 +232,12 @@ export function Chip({
     <button
       type="button"
       className={cn(
-        "flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full px-3 py-[5px] text-[13px]",
+        "flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full px-3 py-[6px] text-[13px]",
         "font-medium transition-colors focus-visible:outline-none focus-visible:ring-2",
         "focus-visible:ring-wa-green/60",
         active
-          ? "bg-wa-green/20 text-wa-teal dark:text-wa-green"
-          : "bg-black/[0.05] text-wa-meta hover:bg-black/[0.09] dark:bg-white/[0.07] dark:hover:bg-white/[0.12]",
+          ? "bg-wa-green/20 text-wa-teal dark:bg-wa-accent-soft dark:text-wa-accent-soft-foreground"
+          : "bg-black/[0.05] text-wa-meta hover:bg-black/[0.09] dark:bg-transparent dark:shadow-[inset_0_0_0_1px_var(--wa-chip-outline)] dark:hover:bg-white/[0.06]",
         className,
       )}
       {...props}

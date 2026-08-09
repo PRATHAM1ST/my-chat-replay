@@ -216,10 +216,13 @@ const QUOTE_KIND_LABEL: Record<string, string> = {
 function QuoteBlock({
   quoted,
   mediaCard,
+  sent,
   onJump,
 }: {
   quoted: NonNullable<Props["quoted"]>;
   mediaCard: boolean;
+  /** the host bubble is a sent (green) one */
+  sent: boolean;
   onJump: (index: number) => void;
 }) {
   const snippet = quoted.text
@@ -232,19 +235,25 @@ function QuoteBlock({
         e.stopPropagation();
         onJump(quoted.index);
       }}
-      className={`relative block cursor-pointer overflow-hidden rounded-[8px] bg-black/[0.06] text-left transition-colors hover:bg-black/[0.09] dark:bg-black/[0.11] dark:hover:bg-black/[0.18] ${
+      className={`relative block cursor-pointer overflow-hidden rounded-[5px] bg-black/[0.06] text-left transition-colors hover:bg-black/[0.09] dark:bg-black/[0.11] dark:hover:bg-black/[0.18] ${
         mediaCard ? "mb-[3px] w-full min-w-40" : "-mx-[5px] mb-1 w-[calc(100%+10px)] min-w-[168px]"
       }`}
     >
       <span className="absolute inset-y-0 left-0 w-[4px]" style={{ background: quoted.color }} />
       <span className="block py-[6px] pl-2.5 pr-2">
+        {/* today's dark theme keeps the accent on the bar and prints the name
+            near-white with only a tint of it */}
         <span
-          className="block truncate text-[12.8px] font-medium leading-[17px]"
-          style={{ color: quoted.color }}
+          className="wa-quote-name block truncate text-[12.8px] font-medium leading-[17px]"
+          style={{ "--q": quoted.color } as React.CSSProperties}
         >
           <Emoji text={quoted.name} />
         </span>
-        <span className="block truncate text-[13px] leading-[18px] text-wa-meta">
+        <span
+          className={`block truncate text-[13px] leading-[18px] ${
+            sent ? "text-wa-meta-out" : "text-wa-meta"
+          }`}
+        >
           <Emoji text={snippet} />
         </span>
       </span>
@@ -461,7 +470,7 @@ export const MessageBubble = memo(function MessageBubble({
           isActive ? "wa-bubble-active" : "",
           /* the width floor keeps a caption from ever collapsing the bubble
              while its picture is still coming up */
-          mediaCard ? "min-w-[146px] p-[3px]" : "px-[9px] py-[5px]",
+          mediaCard ? "min-w-[146px] p-[3px]" : "px-[9px] py-[4px]",
         ]
           .filter(Boolean)
           .join(" ")}
@@ -532,7 +541,9 @@ export const MessageBubble = memo(function MessageBubble({
           </p>
         )}
 
-        {quoted && <QuoteBlock quoted={quoted} mediaCard={mediaCard} onJump={onQuoteJump} />}
+        {quoted && (
+          <QuoteBlock quoted={quoted} mediaCard={mediaCard} sent={isMe} onJump={onQuoteJump} />
+        )}
 
         {hasMedia && (
           <div className={mediaCard ? "relative overflow-hidden rounded-[9px]" : "mb-1"}>
@@ -581,7 +592,7 @@ export const MessageBubble = memo(function MessageBubble({
               className={`ml-auto flex shrink-0 items-center gap-[4px] self-end pl-1 text-[11px] leading-[15px] ${
                 /* on green bubbles the stamp is a whitened green, not the
                    incoming side's gray — sampled off the real app */
-                isMe ? "text-wa-meta dark:text-white/60" : "text-wa-meta"
+                isMe ? "text-wa-meta-out" : "text-wa-meta"
               }`}
             >
               {isStarred && <StarMark />}

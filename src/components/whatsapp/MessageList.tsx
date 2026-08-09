@@ -70,7 +70,7 @@ function DayChip({ label, className = "" }: { label: string; className?: string 
   // Sentence case at the app's measured size: ~22px tall, 12px text, 8px pads.
   return (
     <span
-      className={`rounded-[7.5px] bg-wa-system px-2 py-[3px] text-[12px] font-medium leading-4 text-wa-system-foreground shadow-[var(--wa-shadow-bubble)] ${className}`}
+      className={`rounded-full bg-wa-system px-3 py-[3px] text-[12px] font-medium leading-4 text-wa-system-foreground shadow-[var(--wa-shadow-bubble)] ${className}`}
     >
       {label}
     </span>
