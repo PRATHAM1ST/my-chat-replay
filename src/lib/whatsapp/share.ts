@@ -21,17 +21,45 @@ function blocked(): boolean {
   return new URLSearchParams(window.location.search).get("sw") === "off";
 }
 
+function scriptOf(reg: ServiceWorkerRegistration): string {
+  return (reg.active ?? reg.waiting ?? reg.installing)?.scriptURL ?? "";
+}
+
 async function unregisterShareWorker(): Promise<void> {
   if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
   const regs = await navigator.serviceWorker.getRegistrations();
   await Promise.allSettled(
-    regs
-      .filter((r) => (r.active ?? r.waiting ?? r.installing)?.scriptURL.endsWith(SW_URL))
-      .map((r) => r.unregister()),
+    regs.filter((r) => scriptOf(r).endsWith(SW_URL)).map((r) => r.unregister()),
   );
 }
 
+/**
+ * Nothing this app serves should ever come out of a cache: the transcript, the
+ * media and the archive are all already on the device. A cache can only do
+ * harm here — a shell held over from an earlier deploy asks for asset files
+ * that no longer exist, and the app comes up blank. So on every start we empty
+ * Cache Storage and drop any service worker that is not the share handler.
+ */
+async function evictStaleWorkers(): Promise<void> {
+  try {
+    const names = await caches.keys();
+    await Promise.all(names.map((n) => caches.delete(n)));
+  } catch {
+    /* no Cache Storage is exactly what we want */
+  }
+  try {
+    const regs = await navigator.serviceWorker.getRegistrations();
+    await Promise.allSettled(
+      regs.filter((r) => !scriptOf(r).endsWith(SW_URL)).map((r) => r.unregister()),
+    );
+  } catch {
+    /* ignore */
+  }
+}
+
 export function registerShareTarget(): void {
+  if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
+  void evictStaleWorkers();
   if (blocked()) {
     void unregisterShareWorker();
     return;

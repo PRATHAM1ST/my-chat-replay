@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0.35" y2="1">
+      <stop offset="0" stop-color="#2ee06a"/>
+      <stop offset="0.55" stop-color="#20c65c"/>
+      <stop offset="1" stop-color="#0b9d4e"/>
+    </linearGradient>
+    <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.20"/>
+      <stop offset="0.5" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="0" y="0" width="512" height="512" rx="112.64" fill="url(#tile)"/>
+  <rect x="0" y="0" width="512" height="512" rx="112.64" fill="url(#sheen)"/>
+
+  <g transform="translate(0 0) scale(1)">
+  <!-- speech bubble, tail at the bottom left -->
+  <path fill="#ffffff" d="
+    M 256 79.36
+    C 376.32 79.36 439.296 153.6 439.296 242.688
+    C 439.296 331.776 376.32 406.016 256 406.016
+    C 223.744 406.016 194.048 400.896 168.448 391.68
+    L 98.304 439.296
+    C 84.992 442.368 66.56 428.032 72.192 410.624
+    L 100.352 338.944
+    C 79.36 313.344 72.704 279.552 72.704 242.688
+    C 72.704 153.6 135.68 79.36 256 79.36 Z"/>
+
+  <!-- replay arrow: an arc opening at the top with a tangent head -->
+  <g fill="none" stroke="#15ad53" stroke-width="39.936" stroke-linecap="round">
+    <path d="M 165.75092928716828 257.4196797290965 A 91.136 91.136 0 1 0 218.93164929664388 161.4791211722839"/>
+  </g>
+  <path fill="#15ad53" d="M 170.36017331205545 213.56565221787184 L 151.2638320318432 147.77037830165762 L 227.28120628294005 175.43843981613088 Z"/>
+  </g>
+</svg>

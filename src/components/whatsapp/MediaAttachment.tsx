@@ -23,6 +23,15 @@ function useMediaUrl(file: string | undefined, client: WaClient) {
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
 
+  // Hold the attachment for as long as this bubble is mounted. Nothing the
+  // virtualizer is showing can be reclaimed, so a picture on screen never goes
+  // blank; once the row scrolls away it becomes reclaimable again.
+  useEffect(() => {
+    if (!file) return;
+    client.retain(file);
+    return () => client.release(file);
+  }, [file, client]);
+
   useEffect(() => {
     if (!file) return;
     setFailed(false);

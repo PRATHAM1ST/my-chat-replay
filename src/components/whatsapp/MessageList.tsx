@@ -177,8 +177,10 @@ export function MessageList({
   const measure = virtualizer.measureElement;
 
   // Pull attachments in ahead of the reader — nearest rows first — then keep
-  // going through the rest of the transcript in the background. The archive is
-  // local, so there is no reason to wait for a bubble to scroll into view.
+  // Extract what is about to come into view, and nothing further. Reaching for
+  // the whole transcript pins every attachment in memory at once — a 500 MB
+  // export turns into 500 MB of live blobs seconds after it opens, and the
+  // pictures actually on screen are the ones that stop appearing.
   const first = items[0]?.index ?? 0;
   const last = items[items.length - 1]?.index ?? 0;
   useEffect(() => {
@@ -188,13 +190,6 @@ export function MessageList({
     }
     client.prefetch(near);
   }, [client, messages, first, last]);
-
-  useEffect(() => {
-    const id = setTimeout(() => {
-      client.prefetch(messages.map((m) => m.file));
-    }, 1200);
-    return () => clearTimeout(id);
-  }, [client, messages]);
 
   /** Jump to the newest message, retrying until measurements settle. */
   const toBottom = useCallback(

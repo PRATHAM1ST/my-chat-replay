@@ -80,7 +80,7 @@ export function PwaInstallBanner() {
             Install Chat Replay as an app
             <span className="hidden text-wa-meta sm:inline">
               {" "}
-              — opens exports faster, works offline
+              — share exports straight to it, and open them from your home screen
             </span>
           </p>
           <button

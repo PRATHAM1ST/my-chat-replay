@@ -1,16 +1,17 @@
 import { cn } from "@/lib/utils";
 
 /**
- * The app's mark — a chat bubble wrapped around a replay arrow.
+ * The app's mark — a chat bubble with a replay arrow turning inside it.
  *
- * Drawn as inline SVG rather than the 1024px PNG master: it stays crisp at
- * 20px in the sidebar header, needs no network round-trip, and the PNG is kept
- * only for favicons and PWA icons where a bitmap is required.
+ * Same geometry as the launcher icon in `public/icons`, minus the tile: inside
+ * the app the mark sits on the UI's own surface, so it carries the colour and
+ * knocks the arrow out in white. Inline SVG rather than a bitmap, so it stays
+ * crisp at 20px in the rail and costs no request.
  */
 export function Logo({ className, size = 32 }: { className?: string; size?: number }) {
   return (
     <svg
-      viewBox="0 0 48 48"
+      viewBox="0 0 512 512"
       width={size}
       height={size}
       role="img"
@@ -19,25 +20,25 @@ export function Logo({ className, size = 32 }: { className?: string; size?: numb
       style={{ width: size, height: size }}
     >
       <defs>
-        <linearGradient id="chat-replay-mark" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#2ecc63" />
-          <stop offset="1" stopColor="#0f9d58" />
+        <linearGradient id="chat-replay-mark" x1="0" y1="0" x2="0.35" y2="1">
+          <stop offset="0" stopColor="#2ee06a" />
+          <stop offset="0.55" stopColor="#20c65c" />
+          <stop offset="1" stopColor="#0b9d4e" />
         </linearGradient>
       </defs>
+
       <path
         fill="url(#chat-replay-mark)"
-        d="M24 3.5c11.3 0 20.5 8.7 20.5 19.5S35.3 42.5 24 42.5c-2.6 0-5.1-.4-7.4-1.2l-8.2 3.3a1.6 1.6 0 0 1-2.2-1.9l1.9-7.2A18.9 18.9 0 0 1 3.5 23C3.5 12.2 12.7 3.5 24 3.5Z"
+        d="M 256 79.4 C 376.3 79.4 439.3 153.6 439.3 242.7 C 439.3 331.8 376.3 406 256 406 C 223.7 406 194 400.9 168.4 391.7 L 98.3 439.3 C 85 442.4 66.6 428 72.2 410.6 L 100.4 338.9 C 79.4 313.3 72.7 279.6 72.7 242.7 C 72.7 153.6 135.7 79.4 256 79.4 Z"
       />
-      <g
+      <path
         fill="none"
         stroke="#fff"
-        strokeWidth="4.1"
+        strokeWidth="39.9"
         strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="M15.6 23.2a8.9 8.9 0 1 0 3.2-6.9" />
-        <path d="M18.8 10.9v5.6h5.6" />
-      </g>
+        d="M 165.8 257.4 A 91.1 91.1 0 1 0 218.9 161.5"
+      />
+      <path fill="#fff" d="M 170.4 213.6 L 151.3 147.8 L 227.3 175.4 Z" />
     </svg>
   );
 }

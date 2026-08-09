@@ -15,6 +15,13 @@ export interface MediaResult {
   mime: string;
 }
 
+interface Held extends MediaResult {
+  size: number;
+}
+
+/** How much released media to keep around for a quick scroll back. */
+const IDLE_BUDGET = 48 * 1024 * 1024;
+
 /** Talks to the parsing worker. All heavy work happens off the main thread. */
 export class WaClient {
   private worker: Worker;
@@ -26,11 +33,21 @@ export class WaClient {
   private dead = false;
 
   /**
-   * Every attachment we have extracted, kept for the whole session. The archive
-   * is already on disk, so evicting buys nothing — and a revoked url is exactly
-   * what leaves a bubble showing an empty box.
+   * Extracted attachments, held only for as long as something needs them.
+   *
+   * An object url pins the whole decoded file in memory, so "keep everything"
+   * means a 500 MB export becomes 500 MB of live blobs a few seconds after it
+   * opens — which is what stops pictures rendering at all. Instead, a bubble
+   * retains its attachment while it is mounted and releases it when the
+   * virtualizer unmounts the row. Retained entries are never revoked, so what
+   * is on screen can never break; released ones stay in a byte-capped pool so
+   * scrolling back a screen or two is still instant.
    */
-  private mediaCache = new Map<string, MediaResult>();
+  private held = new Map<string, Held>();
+  private refs = new Map<string, number>();
+  /** names with no holder left, oldest first */
+  private idle: string[] = [];
+  private idleBytes = 0;
   private inflight = new Map<string, Promise<MediaResult>>();
   /** Names queued for background prefetch, drained a few at a time. */
   private queue: string[] = [];
@@ -106,7 +123,7 @@ export class WaClient {
   }
 
   media(name: string): Promise<MediaResult> {
-    const hit = this.mediaCache.get(name);
+    const hit = this.held.get(name);
     if (hit) return Promise.resolve(hit);
     const running = this.inflight.get(name);
     if (running) return running;
@@ -119,13 +136,14 @@ export class WaClient {
     })
       .then((d) => {
         const blob = new Blob([d.bytes], { type: d.mime });
-        const res: MediaResult = { url: URL.createObjectURL(blob), mime: d.mime };
+        const res: Held = { url: URL.createObjectURL(blob), mime: d.mime, size: blob.size };
         this.inflight.delete(name);
         if (this.dead) {
           URL.revokeObjectURL(res.url);
           return res;
         }
-        this.mediaCache.set(name, res);
+        this.held.set(name, res);
+        if (!this.refs.get(name)) this.park(name, res);
         return res;
       })
       .catch((e) => {
@@ -136,9 +154,9 @@ export class WaClient {
     return p;
   }
 
-  /** True once the attachment's url is resolved and ready to render. */
+  /** The attachment's url when it is already extracted and ready to paint. */
   ready(name: string | undefined) {
-    return name ? this.mediaCache.get(name) : undefined;
+    return name ? this.held.get(name) : undefined;
   }
 
   /**
@@ -148,7 +166,7 @@ export class WaClient {
    */
   prefetch(names: (string | undefined)[]) {
     for (const n of names) {
-      if (!n || this.mediaCache.has(n) || this.inflight.has(n)) continue;
+      if (!n || this.held.has(n) || this.inflight.has(n)) continue;
       if (!this.queue.includes(n)) this.queue.push(n);
     }
     this.drain();
@@ -157,7 +175,7 @@ export class WaClient {
   private drain() {
     while (!this.dead && this.active < 3 && this.queue.length) {
       const name = this.queue.shift()!;
-      if (this.mediaCache.has(name)) continue;
+      if (this.held.has(name)) continue;
       this.active++;
       this.media(name)
         .catch(() => undefined)
@@ -168,14 +186,53 @@ export class WaClient {
     }
   }
 
-  /** No-ops kept for callers: nothing is evicted while the chat is open. */
-  retain(_name: string) {}
-  release(_name: string) {}
+  /** Claim an attachment for as long as a bubble is showing it. */
+  retain(name: string) {
+    this.refs.set(name, (this.refs.get(name) ?? 0) + 1);
+    const at = this.idle.indexOf(name);
+    if (at !== -1) {
+      this.idle.splice(at, 1);
+      this.idleBytes -= this.held.get(name)?.size ?? 0;
+    }
+  }
 
-  /** Forget a cached url (e.g. it failed to decode) so the next call re-extracts. */
+  /** The bubble is gone; the attachment may now be reclaimed under pressure. */
+  release(name: string) {
+    const left = (this.refs.get(name) ?? 0) - 1;
+    if (left > 0) {
+      this.refs.set(name, left);
+      return;
+    }
+    this.refs.delete(name);
+    const entry = this.held.get(name);
+    if (entry) this.park(name, entry);
+  }
+
+  /** Move an unclaimed attachment into the pool, trimming it back to budget. */
+  private park(name: string, entry: Held) {
+    if (this.idle.includes(name)) return;
+    this.idle.push(name);
+    this.idleBytes += entry.size;
+    while (this.idleBytes > IDLE_BUDGET && this.idle.length > 1) {
+      const oldest = this.idle.shift();
+      if (oldest === undefined) break;
+      const gone = this.held.get(oldest);
+      if (!gone) continue;
+      this.idleBytes -= gone.size;
+      this.held.delete(oldest);
+      URL.revokeObjectURL(gone.url);
+    }
+  }
+
+  /** Drop a url that failed to decode so the next call extracts it again. */
   forget(name: string) {
-    const v = this.mediaCache.get(name);
-    this.mediaCache.delete(name);
+    const v = this.held.get(name);
+    this.held.delete(name);
+    const at = this.idle.indexOf(name);
+    if (at !== -1) {
+      this.idle.splice(at, 1);
+      this.idleBytes -= v?.size ?? 0;
+    }
     if (v) URL.revokeObjectURL(v.url);
   }
 
@@ -193,8 +250,11 @@ export class WaClient {
     this.inflight.clear();
     this.queue = [];
 
-    for (const v of this.mediaCache.values()) URL.revokeObjectURL(v.url);
-    this.mediaCache.clear();
+    for (const v of this.held.values()) URL.revokeObjectURL(v.url);
+    this.held.clear();
+    this.refs.clear();
+    this.idle = [];
+    this.idleBytes = 0;
     this.ratios.clear();
     this.worker.terminate();
   }

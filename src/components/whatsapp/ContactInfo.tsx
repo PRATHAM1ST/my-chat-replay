@@ -70,7 +70,6 @@ function MediaThumb({
     };
   }, [client, msg.file, inView, nonce]);
 
-
   return (
     <button
       ref={ref}
