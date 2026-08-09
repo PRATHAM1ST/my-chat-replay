@@ -27,8 +27,15 @@ export class WaClient {
 
   // LRU of object URLs so media memory stays bounded
   private mediaCache = new Map<string, MediaResult>();
-  private mediaLimit = 80;
+  private mediaLimit = 160;
   private inflight = new Map<string, Promise<MediaResult>>();
+  /**
+   * How many mounted views are currently displaying each attachment. An entry
+   * that is on screen must never be evicted: revoking its object URL leaves the
+   * bubble showing an empty box with no way to recover.
+   */
+  private uses = new Map<string, number>();
+
   /**
    * Natural pixel size of every attachment we have decoded, so a row that
    * scrolls back into view reserves the right height immediately instead of
