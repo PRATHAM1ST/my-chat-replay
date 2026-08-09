@@ -215,6 +215,14 @@ export function ChatViewer() {
     onLaunchWithFile((file, handle) => void handleFile(file, handle));
   }, [handleFile]);
 
+  // Installed app: an archive shared to us via the Android share sheet.
+  useEffect(() => {
+    registerShareTarget();
+    void takeSharedFile().then((file) => {
+      if (file) void handleFile(file);
+    });
+  }, [handleFile]);
+
   // debounce search input
   useEffect(() => {
     if (query === debounced) return;
