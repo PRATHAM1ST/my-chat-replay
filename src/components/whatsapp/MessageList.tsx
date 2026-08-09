@@ -197,15 +197,36 @@ export function MessageList({
     [messages.length, virtualizer],
   );
 
-  // Land on the newest message whenever a different chat is opened.
+  // Land where the reader left off — or on the newest message when there is no
+  // stored position — whenever a different chat is opened. Captured once per
+  // mount: the list is keyed by chat, so a remount *is* a new chat.
+  const restoreRef = useRef(restore);
   const lastKey = useRef<string>("");
   useLayoutEffect(() => {
     const key = `${messages.length}:${messages[0]?.ts ?? 0}`;
     if (key === lastKey.current) return;
     lastKey.current = key;
-    setAtBottom(true);
-    toBottom();
-  }, [messages, toBottom]);
+    const saved = restoreRef.current;
+    restoreRef.current = null;
+    const index = saved && !saved.atBottom ? Math.min(saved.index, messages.length - 1) : -1;
+    if (index < 0) {
+      setAtBottom(true);
+      toBottom();
+      return;
+    }
+    setAtBottom(false);
+    // Rows above the target are still estimates, so re-seek a few frames while
+    // measurements settle, then absorb the sub-row offset.
+    let tries = 0;
+    const settle = () => {
+      virtualizer.scrollToIndex(index, { align: "start" });
+      const el = parentRef.current;
+      if (el && saved) el.scrollTop += saved.offset;
+      if (tries++ < 5) requestAnimationFrame(settle);
+    };
+    settle();
+  }, [messages, toBottom, virtualizer]);
+
 
   useEffect(() => {
     if (!scrollTarget) return;
