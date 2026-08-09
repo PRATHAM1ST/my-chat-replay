@@ -300,3 +300,44 @@ test("call events become call messages; sentences about calls do not", () => {
     ["call", "call", "text"],
   );
 });
+
+test('the sender named after the archive is never "me"', () => {
+  // Real Android export: the owner's messages carry a junk profile name ("-")
+  // and the other party out-writes them — counts alone would flip the sides.
+  const chat = parseChat(
+    [
+      "10/08/2025, 12:03 - Pratyusha: Hi Pratham",
+      "10/08/2025, 12:03 - Pratyusha: How are things going?",
+      "10/08/2025, 12:03 - Pratyusha: Still around?",
+      "10/08/2025, 12:04 - -: Hey, all good",
+    ].join("\n"),
+    { chatName: "Pratyusha" },
+  );
+  assert.deepEqual(chat.senders, ["Pratyusha", "-"]);
+  assert.equal(chat.meIndex, 1);
+});
+
+test("without a matching chat name the busiest sender is still me", () => {
+  const chat = parseChat(
+    ["12/03/2024, 09:00 - Ann: a", "12/03/2024, 09:01 - Ben: b", "12/03/2024, 09:02 - Ben: c"].join(
+      "\n",
+    ),
+    { chatName: "Weekend Trip" },
+  );
+  assert.equal(chat.meIndex, 1);
+});
+
+test("in a group named after a member, that member is still not me", () => {
+  const chat = parseChat(
+    [
+      "12/03/2024, 09:00 - Ann: a",
+      "12/03/2024, 09:01 - Ann: b",
+      "12/03/2024, 09:02 - Ann: c",
+      "12/03/2024, 09:03 - Ben: d",
+      "12/03/2024, 09:04 - Cara: e",
+      "12/03/2024, 09:05 - Ben: f",
+    ].join("\n"),
+    { chatName: "Ann" },
+  );
+  assert.equal(chat.meIndex, 1); // busiest sender that is not Ann
+});

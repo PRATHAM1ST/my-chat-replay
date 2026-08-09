@@ -24,7 +24,10 @@ export interface ParsedChat {
   counts: number[];
   chatName: string;
   mediaCount: number;
-  /** heuristic: index of the busiest sender */
+  /**
+   * Which sender is "me": never the one the archive is named after
+   * ("WhatsApp Chat with Ann"), else the busiest sender as a fallback guess.
+   */
   meIndex: number;
 }
 

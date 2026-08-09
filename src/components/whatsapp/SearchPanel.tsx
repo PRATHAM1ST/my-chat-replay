@@ -29,6 +29,7 @@ import {
 interface Props {
   messages: Msg[];
   senders: string[];
+  meIndex: number;
   query: string;
   onQuery: (v: string) => void;
   scope: SearchScope;
@@ -98,6 +99,7 @@ function Snippet({ text, needle }: { text: string; needle: string }) {
 export function SearchPanel({
   messages,
   senders,
+  meIndex,
   query,
   onQuery,
   scope,
@@ -142,7 +144,8 @@ export function SearchPanel({
     [onNext, onPrev, onClose],
   );
 
-  const senderLabel = sender === null ? "Everyone" : (senders[sender] ?? "Everyone");
+  const senderLabel =
+    sender === null ? "Everyone" : sender === meIndex ? "You" : (senders[sender] ?? "Everyone");
   const counter = useMemo(() => {
     if (!active) return "Search a word, or filter by type";
     if (busy) return "Searching…";
@@ -205,7 +208,7 @@ export function SearchPanel({
                 <MenuItem onSelect={() => onSender(null)}>Everyone</MenuItem>
                 {senders.map((name, i) => (
                   <MenuItem key={name} onSelect={() => onSender(i)}>
-                    <span className="min-w-0 flex-1 truncate">{name}</span>
+                    <span className="min-w-0 flex-1 truncate">{i === meIndex ? "You" : name}</span>
                   </MenuItem>
                 ))}
               </MenuContent>
@@ -234,7 +237,7 @@ export function SearchPanel({
             const msg = messages[gi];
             if (!msg) return null;
             const isCurrent = vi.index === matchPos;
-            const name = senders[msg.s] ?? "Unknown";
+            const name = msg.s === meIndex ? "You" : (senders[msg.s] ?? "Unknown");
             const preview = msg.text
               ? snippet(msg.text, needle)
               : (KIND_LABEL[msg.kind] ?? "Attachment");
@@ -254,7 +257,12 @@ export function SearchPanel({
                 <span className="flex items-baseline gap-2 text-[12.5px]">
                   <span
                     className="min-w-0 flex-1 truncate font-medium"
-                    style={{ color: `var(--wa-name-${nameColor(msg.s)})` }}
+                    style={{
+                      color:
+                        msg.s === meIndex
+                          ? "var(--wa-green)"
+                          : `var(--wa-name-${nameColor(msg.s)})`,
+                    }}
                   >
                     <Emoji text={name} />
                   </span>

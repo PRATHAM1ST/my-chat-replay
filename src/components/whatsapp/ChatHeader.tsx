@@ -36,8 +36,15 @@ export function ChatHeader({
   onOpenInfo,
   onCloseChat,
 }: Props) {
+  // 1:1 chats are named after the other party, so echoing their name below the
+  // title says nothing — WhatsApp's own placeholder line goes there instead.
+  const others = senders.filter((_, i) => i !== meIndex).join(", ");
   const subtitle =
-    senders.length > 2 ? senders.join(", ") : senders.filter((_, i) => i !== meIndex).join(", ");
+    senders.length > 2
+      ? senders.map((n, i) => (i === meIndex ? "You" : n)).join(", ")
+      : others && others !== chatName
+        ? others
+        : "tap here for contact info";
 
   return (
     <header className="z-20 flex h-[60px] shrink-0 items-center gap-1 border-b border-wa-divider bg-wa-panel pl-1 pr-2 text-wa-panel-foreground sm:pl-3">

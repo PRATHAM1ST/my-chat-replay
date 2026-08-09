@@ -23,6 +23,9 @@ interface Props {
   matchSet: Set<number>;
   starredSet: Set<number>;
   onToggleStar: (index: number) => void;
+  /** message index -> emoji, curated by the user */
+  reactions: Map<number, string>;
+  onReact: (index: number, emoji: string | null) => void;
   /** replyIndex -> quotedIndex, curated by the user */
   replies: Map<number, number>;
   /** true while the user is picking which message a reply quotes */
@@ -53,8 +56,10 @@ interface RowProps {
   isActive: boolean;
   isStarred: boolean;
   onToggleStar: (index: number) => void;
+  reaction: string | null;
+  onReact: (index: number, emoji: string | null) => void;
   mentionRe: RegExp | null;
-  quoted: { name: string; colorIdx: number; text: string; kind: Msg["kind"]; index: number } | null;
+  quoted: { name: string; color: string; text: string; kind: Msg["kind"]; index: number } | null;
   onQuoteJump: (index: number) => void;
   onStartReplyLink: (index: number) => void;
   onRemoveReplyLink: (index: number) => void;
@@ -62,9 +67,10 @@ interface RowProps {
 }
 
 function DayChip({ label, className = "" }: { label: string; className?: string }) {
+  // Sentence case, like the app's own "Today" / "23 July 2026" pills.
   return (
     <span
-      className={`rounded-lg bg-wa-system px-3 py-[5px] text-[12.5px] font-medium uppercase tracking-[0.01em] text-wa-system-foreground shadow-[var(--wa-shadow-bubble)] ${className}`}
+      className={`rounded-[7.5px] bg-wa-system px-3 py-[5px] text-[12.5px] font-medium text-wa-system-foreground shadow-[var(--wa-shadow-bubble)] ${className}`}
     >
       {label}
     </span>
@@ -83,6 +89,8 @@ const Row = memo(function Row({
   isActive,
   isStarred,
   onToggleStar,
+  reaction,
+  onReact,
   mentionRe,
   quoted,
   onQuoteJump,
@@ -112,6 +120,8 @@ const Row = memo(function Row({
         isActive={isActive}
         isStarred={isStarred}
         onToggleStar={onToggleStar}
+        reaction={reaction}
+        onReact={onReact}
         mentionRe={mentionRe}
         quoted={quoted}
         onQuoteJump={onQuoteJump}
@@ -134,6 +144,8 @@ export function MessageList({
   matchSet,
   starredSet,
   onToggleStar,
+  reactions,
+  onReact,
   replies,
   linking,
   onPickQuoted,
@@ -175,9 +187,10 @@ export function MessageList({
         cpl,
         ratio: client.ratio(msg?.file),
         quoted: !!msg && replies.has(msg.i),
+        reacted: !!msg && reactions.has(msg.i),
       });
     },
-    [messages, client, cpl, group, replies],
+    [messages, client, cpl, group, replies, reactions],
   );
 
   const virtualizer = useVirtualizer({
@@ -372,10 +385,19 @@ export function MessageList({
 
             const quotedIdx = replies.get(msg.i);
             const quotedMsg = quotedIdx !== undefined ? messages[quotedIdx] : undefined;
+            // Quoting yourself reads "You" in your green, exactly like the app.
             const quoted = quotedMsg
               ? {
-                  name: quotedMsg.s >= 0 ? (senders[quotedMsg.s] ?? "Unknown") : "System",
-                  colorIdx: nameColor(Math.max(0, quotedMsg.s)),
+                  name:
+                    quotedMsg.s < 0
+                      ? "System"
+                      : quotedMsg.s === meIndex
+                        ? "You"
+                        : (senders[quotedMsg.s] ?? "Unknown"),
+                  color:
+                    quotedMsg.s === meIndex
+                      ? "var(--wa-green)"
+                      : `var(--wa-name-${nameColor(Math.max(0, quotedMsg.s))})`,
                   text: quotedMsg.text,
                   kind: quotedMsg.kind,
                   index: quotedMsg.i,
@@ -410,6 +432,8 @@ export function MessageList({
                   isActive={activeIndex === msg.i}
                   isStarred={starredSet.has(msg.i)}
                   onToggleStar={onToggleStar}
+                  reaction={reactions.get(msg.i) ?? null}
+                  onReact={onReact}
                   mentionRe={mentionRe}
                   quoted={quoted}
                   onQuoteJump={onQuoteJump}

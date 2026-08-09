@@ -414,7 +414,8 @@ export function ContactInfo({
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-[14px] text-wa-link">{url}</span>
                         <span className="block truncate text-[12px] text-wa-meta">
-                          {senders[msg.s] ?? "Unknown"} · {formatDay(msg.ts)}
+                          {msg.s === meIndex ? "You" : (senders[msg.s] ?? "Unknown")} ·{" "}
+                          {formatDay(msg.ts)}
                         </span>
                       </span>
                       <ExternalLink className="size-3.5 shrink-0 text-wa-meta" />
@@ -446,7 +447,8 @@ export function ContactInfo({
                         {msg.label || msg.file?.split("/").pop() || "Document"}
                       </span>
                       <span className="block truncate text-[12px] text-wa-meta">
-                        {senders[msg.s] ?? "Unknown"} · {formatDay(msg.ts)}
+                        {msg.s === meIndex ? "You" : (senders[msg.s] ?? "Unknown")} ·{" "}
+                        {formatDay(msg.ts)}
                       </span>
                     </span>
                   </li>
@@ -472,7 +474,11 @@ export function ContactInfo({
                       <span className="min-w-0 flex-1">
                         <span className="flex items-baseline gap-2 text-[12px]">
                           <span className="min-w-0 flex-1 truncate font-medium text-wa-panel-foreground">
-                            {msg.s >= 0 ? (senders[msg.s] ?? "Unknown") : "System"}
+                            {msg.s < 0
+                              ? "System"
+                              : msg.s === meIndex
+                                ? "You"
+                                : (senders[msg.s] ?? "Unknown")}
                           </span>
                           <span className="shrink-0 text-wa-meta">{formatDay(msg.ts)}</span>
                         </span>

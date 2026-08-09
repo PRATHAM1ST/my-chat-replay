@@ -25,6 +25,7 @@ import {
 import { displayNames, getPrefs, savePrefs, type ChatPrefs } from "@/lib/whatsapp/prefs";
 import { onLaunchWithFile } from "@/lib/whatsapp/launch";
 import { hasPendingShare, registerPwaWorker, takeSharedFile } from "@/lib/whatsapp/share";
+import { getReactions, saveReactions, withReaction } from "@/lib/whatsapp/reactions";
 import { getReplies, saveReplies, withLink, withoutLink } from "@/lib/whatsapp/replies";
 import { getStars, withToggled, saveStars } from "@/lib/whatsapp/stars";
 
@@ -55,6 +56,7 @@ export function ChatViewer() {
   const [retry, setRetry] = useState<LibraryEntry | null>(null);
   const [canShare, setCanShare] = useState(false);
   const [stars, setStars] = useState<Set<number>>(new Set());
+  const [reactions, setReactions] = useState<Map<number, string>>(new Map());
   const [replies, setReplies] = useState<Map<number, number>>(new Map());
   /** index of the reply whose quoted message is being picked, or null */
   const [linking, setLinking] = useState<number | null>(null);
@@ -189,6 +191,7 @@ export function ChatViewer() {
         setLastId(id);
         setActiveId(id);
         setStars(getStars(id));
+        setReactions(getReactions(id));
         setReplies(getReplies(id));
         setLinking(null);
         setPickerView(false);
@@ -236,6 +239,17 @@ export function ChatViewer() {
       setStars((prev) => {
         const next = withToggled(prev, index);
         saveStars(activeId, next);
+        return next;
+      });
+    },
+    [activeId],
+  );
+
+  const react = useCallback(
+    (index: number, emoji: string | null) => {
+      setReactions((prev) => {
+        const next = withReaction(prev, index, emoji);
+        saveReactions(activeId, next);
         return next;
       });
     },
@@ -660,6 +674,7 @@ export function ChatViewer() {
     setMobileChatOpen(false);
     setActiveId(null);
     setStars(new Set());
+    setReactions(new Map());
     setReplies(new Map());
     setLinking(null);
     void refreshLibrary();
@@ -804,6 +819,8 @@ export function ChatViewer() {
               matchSet={matchSet}
               starredSet={stars}
               onToggleStar={toggleStar}
+              reactions={reactions}
+              onReact={react}
               replies={replies}
               linking={linking !== null}
               onPickQuoted={pickQuoted}
@@ -837,6 +854,7 @@ export function ChatViewer() {
         <SearchPanel
           messages={chat.messages}
           senders={senderNames}
+          meIndex={meIndex}
           query={query}
           onQuery={setQuery}
           scope={scope}
@@ -884,6 +902,7 @@ export function ChatViewer() {
         index={lightboxIdx}
         client={client}
         senders={senderNames}
+        meIndex={meIndex}
         onIndex={setLightboxIdx}
         onClose={() => setLightboxIdx(null)}
       />

@@ -14,6 +14,7 @@
  */
 
 import { clearAllPrefs, clearPrefs } from "./prefs";
+import { clearAllReactions, clearReactions } from "./reactions";
 import { clearAllReplies, clearReplies } from "./replies";
 import { clearAllStars, clearStars } from "./stars";
 import { clearVault, deleteArchive, hasArchive, loadArchive } from "./vault";
@@ -107,6 +108,7 @@ export async function removeChat(id: string) {
   clearPrefs(id);
   clearStars(id);
   clearReplies(id);
+  clearReactions(id);
   if (getLastId() === id) setLastId(null);
 }
 
@@ -120,6 +122,7 @@ export async function clearChats() {
   clearAllPrefs();
   clearAllStars();
   clearAllReplies();
+  clearAllReactions();
   setLastId(null);
 }
 

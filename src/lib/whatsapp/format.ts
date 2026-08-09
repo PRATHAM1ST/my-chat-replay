@@ -1,8 +1,8 @@
 export function formatTime(ts: number) {
-  return new Date(ts).toLocaleTimeString(undefined, {
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  // WhatsApp writes its meridiem lowercase — "12:04 pm" — on every platform.
+  return new Date(ts)
+    .toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
+    .replace(/[AP]M\b/, (m) => m.toLowerCase());
 }
 
 export function dayKey(ts: number) {
@@ -20,9 +20,10 @@ export function formatDay(ts: number) {
   if (k === dayKey(now)) return "Today";
   if (k === dayKey(now - DAY)) return "Yesterday";
   if (ts > now - 6 * DAY) return d.toLocaleDateString(undefined, { weekday: "long" });
+  // WhatsApp spells the month out on its date pills: "23 July 2026".
   return d.toLocaleDateString(undefined, {
     day: "numeric",
-    month: "short",
+    month: "long",
     year: "numeric",
   });
 }

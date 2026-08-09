@@ -10,6 +10,7 @@ interface Props {
   index: number | null;
   client: WaClient | null;
   senders: string[];
+  meIndex: number;
   onIndex: (i: number) => void;
   onClose: () => void;
 }
@@ -38,7 +39,7 @@ function GlassButton({
 }
 
 /** Full-screen media carousel: arrows, keyboard and a filmstrip of neighbours. */
-export function Lightbox({ items, index, client, senders, onIndex, onClose }: Props) {
+export function Lightbox({ items, index, client, senders, meIndex, onIndex, onClose }: Props) {
   const [url, setUrl] = useState<string | null>(null);
   const msg = index === null ? undefined : items[index];
 
@@ -85,7 +86,7 @@ export function Lightbox({ items, index, client, senders, onIndex, onClose }: Pr
   }, [msg?.file, client, index, items]);
 
   if (index === null || !msg) return null;
-  const name = msg.s >= 0 ? (senders[msg.s] ?? "") : "";
+  const name = msg.s < 0 ? "" : msg.s === meIndex ? "You" : (senders[msg.s] ?? "");
 
   return (
     <div

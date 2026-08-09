@@ -4,7 +4,9 @@ import {
   CheckCheck,
   ChevronDown,
   Copy,
+  Lock,
   Phone,
+  Plus,
   Reply,
   Share2,
   Star,
@@ -19,7 +21,7 @@ import { splitMentions } from "@/lib/whatsapp/mentions";
 import { isDeletedMessage, parseCallLine, splitFormatRuns } from "@/lib/whatsapp/richtext";
 import { MediaAttachment } from "./MediaAttachment";
 import { useLongPress } from "./useLongPress";
-import { Emoji, Menu, MenuContent, MenuItem, MenuTrigger } from "./ui";
+import { Emoji, Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "./ui";
 
 interface Props {
   msg: Msg;
@@ -34,10 +36,14 @@ interface Props {
   tail: boolean;
   isStarred: boolean;
   onToggleStar: (index: number) => void;
+  /** the emoji the user attached to this message, if any */
+  reaction: string | null;
+  /** set (or clear, with null) this message's reaction */
+  onReact: (index: number, emoji: string | null) => void;
   /** compiled from the participant list; null when the chat has no names */
   mentionRe: RegExp | null;
   /** the message this one quotes, when the user linked one */
-  quoted: { name: string; colorIdx: number; text: string; kind: MsgKind; index: number } | null;
+  quoted: { name: string; color: string; text: string; kind: MsgKind; index: number } | null;
   onQuoteJump: (index: number) => void;
   onStartReplyLink: (index: number) => void;
   onRemoveReplyLink: (index: number) => void;
@@ -228,14 +234,11 @@ function QuoteBlock({
         mediaCard ? "mb-[3px]" : "mb-1"
       }`}
     >
-      <span
-        className="absolute inset-y-0 left-0 w-[4px]"
-        style={{ background: `var(--wa-name-${quoted.colorIdx})` }}
-      />
+      <span className="absolute inset-y-0 left-0 w-[4px]" style={{ background: quoted.color }} />
       <span className="block py-[5px] pl-2.5 pr-2">
         <span
           className="block truncate text-[12.8px] font-medium leading-[17px]"
-          style={{ color: `var(--wa-name-${quoted.colorIdx})` }}
+          style={{ color: quoted.color }}
         >
           <Emoji text={quoted.name} />
         </span>
@@ -279,6 +282,99 @@ function StarMark() {
   return <Star className="size-[11px] shrink-0 fill-current" aria-label="Starred" />;
 }
 
+/** WhatsApp's quick-reaction bar, plus a field for any other emoji. */
+const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
+
+function firstGrapheme(text: string): string | null {
+  const t = text.trim();
+  if (!t) return null;
+  try {
+    const it = new Intl.Segmenter(undefined, { granularity: "grapheme" })
+      .segment(t)
+      [Symbol.iterator]();
+    const first = it.next();
+    return first.done ? null : first.value.segment;
+  } catch {
+    return [...t][0] ?? null;
+  }
+}
+
+/**
+ * The reaction strip at the top of the bubble menu. Exports carry no reaction
+ * data, so — like reply links — these are attached by the person who was
+ * there: tap to react, tap again to take it back, + for any other emoji.
+ */
+function ReactRow({
+  current,
+  onPick,
+}: {
+  current: string | null;
+  onPick: (emoji: string | null) => void;
+}) {
+  const [custom, setCustom] = useState(false);
+  const [draft, setDraft] = useState("");
+  const inBar = current === null || QUICK_REACTIONS.includes(current);
+
+  const commit = () => {
+    const emoji = firstGrapheme(draft);
+    if (emoji) onPick(emoji);
+    setCustom(false);
+    setDraft("");
+  };
+
+  return (
+    <div className="px-2 pb-1 pt-0.5">
+      <div className="flex items-center gap-0.5">
+        {QUICK_REACTIONS.map((emoji) => (
+          <button
+            key={emoji}
+            type="button"
+            aria-label={current === emoji ? `Remove ${emoji} reaction` : `React ${emoji}`}
+            onClick={() => onPick(current === emoji ? null : emoji)}
+            className={`grid size-8 cursor-pointer place-items-center rounded-full text-[17px] transition-transform hover:scale-115 ${
+              current === emoji ? "bg-wa-green/25" : "hover:bg-wa-hover"
+            }`}
+          >
+            <span className="wa-emoji">{emoji}</span>
+          </button>
+        ))}
+        <button
+          type="button"
+          aria-label="React with another emoji"
+          onClick={() => setCustom((v) => !v)}
+          className={`grid size-8 cursor-pointer place-items-center rounded-full transition-colors hover:bg-wa-hover ${
+            current && !inBar ? "bg-wa-green/25" : ""
+          }`}
+        >
+          {current && !inBar ? (
+            <span className="wa-emoji text-[17px]">{current}</span>
+          ) : (
+            <Plus className="size-4 text-wa-meta" />
+          )}
+        </button>
+      </div>
+      {custom && (
+        <input
+          autoFocus
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            e.stopPropagation();
+            if (e.key === "Enter") commit();
+            if (e.key === "Escape") {
+              setCustom(false);
+              setDraft("");
+            }
+          }}
+          onBlur={commit}
+          placeholder="Type or paste an emoji…"
+          className="mt-1 h-8 w-full rounded-lg bg-wa-input px-2.5 text-[13.5px] text-wa-panel-foreground outline-none placeholder:text-wa-meta"
+        />
+      )}
+    </div>
+  );
+}
+
 export const MessageBubble = memo(function MessageBubble({
   msg,
   isMe,
@@ -291,6 +387,8 @@ export const MessageBubble = memo(function MessageBubble({
   tail,
   isStarred,
   onToggleStar,
+  reaction,
+  onReact,
   mentionRe,
   quoted,
   onQuoteJump,
@@ -313,10 +411,19 @@ export const MessageBubble = memo(function MessageBubble({
   }, [msg.text, senderName]);
 
   if (msg.kind === "system") {
+    // The encryption notice gets WhatsApp's special treatment: a lock glyph
+    // and the amber pill. Every system line renders its export markers
+    // (*Learn more*) styled, the way the app itself shows them.
+    const e2e = /end-to-end encrypted/i.test(msg.text);
     return (
       <div className="flex justify-center px-4 py-1.5">
-        <p className="max-w-[85%] rounded-[7.5px] bg-wa-system px-3 py-[6px] text-center text-[12.5px] leading-[17px] text-wa-system-foreground shadow-[var(--wa-shadow-bubble)] sm:max-w-md">
-          <Highlighted text={msg.text} query={isMatch ? query : ""} />
+        <p
+          className={`max-w-[85%] rounded-[7.5px] px-3 py-[6px] text-center text-[12.5px] leading-[17px] shadow-[var(--wa-shadow-bubble)] sm:max-w-md ${
+            e2e ? "bg-wa-e2e text-wa-e2e-foreground" : "bg-wa-system text-wa-system-foreground"
+          }`}
+        >
+          {e2e && <Lock className="mr-1 inline-block size-[11px] -translate-y-px" />}
+          <Formatted text={msg.text} query={isMatch ? query : ""} mentionRe={null} />
         </p>
       </div>
     );
@@ -332,7 +439,11 @@ export const MessageBubble = memo(function MessageBubble({
   const bare = !!big || sticker;
 
   return (
-    <div className={`flex px-[6%] py-[1px] md:px-[7%] ${isMe ? "justify-end" : "justify-start"}`}>
+    <div
+      className={`flex px-[6%] py-[1px] md:px-[7%] ${isMe ? "justify-end" : "justify-start"} ${
+        reaction ? "pb-[18px]" : ""
+      }`}
+    >
       <div
         {...hold}
         className={[
@@ -366,6 +477,14 @@ export const MessageBubble = memo(function MessageBubble({
             </button>
           </MenuTrigger>
           <MenuContent align={isMe ? "end" : "start"}>
+            <ReactRow
+              current={reaction}
+              onPick={(emoji) => {
+                onReact(msg.i, emoji);
+                setMenuOpen(false);
+              }}
+            />
+            <MenuSeparator />
             <MenuItem onSelect={() => onToggleStar(msg.i)}>
               {isStarred ? (
                 <>
@@ -417,7 +536,7 @@ export const MessageBubble = memo(function MessageBubble({
               <span className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-end bg-gradient-to-t from-black/45 to-transparent px-2 pb-1 pt-6 text-[11px] leading-[15px] text-white">
                 <span className="flex items-center gap-[3px]">
                   {isStarred && <StarMark />}
-                  {msg.edited && <span className="italic opacity-80">edited</span>}
+                  {msg.edited && <span className="opacity-90">Edited</span>}
                   {formatTime(msg.ts)}
                   {isMe && <CheckCheck className="size-[15px] text-wa-tick" strokeWidth={2.2} />}
                 </span>
@@ -459,7 +578,7 @@ export const MessageBubble = memo(function MessageBubble({
               }`}
             >
               {isStarred && <StarMark />}
-              {msg.edited && <span className="italic">edited</span>}
+              {msg.edited && <span>Edited</span>}
               {formatTime(msg.ts)}
               {isMe && <CheckCheck className="size-[15px] text-wa-tick" strokeWidth={2.2} />}
             </span>
@@ -472,6 +591,24 @@ export const MessageBubble = memo(function MessageBubble({
             {formatTime(msg.ts)}
             {isMe && <CheckCheck className="size-[15px] text-wa-tick" strokeWidth={2.2} />}
           </span>
+        )}
+
+        {/* The reaction pill hangs off the bubble's bottom corner, ringed in
+            the wallpaper colour so it reads as cut out — tap to take it back */}
+        {reaction && (
+          <button
+            type="button"
+            aria-label={`Reacted ${reaction} — click to remove`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onReact(msg.i, null);
+            }}
+            className={`absolute -bottom-[15px] z-[5] flex cursor-pointer items-center rounded-full border-2 border-wa-chat bg-wa-in px-[6px] py-px shadow-[var(--wa-shadow-bubble)] transition-transform hover:scale-110 ${
+              isMe ? "right-1" : "left-1"
+            }`}
+          >
+            <span className="wa-emoji text-[13px] leading-[17px]">{reaction}</span>
+          </button>
         )}
       </div>
     </div>

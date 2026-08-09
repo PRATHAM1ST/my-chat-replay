@@ -219,9 +219,18 @@ export function parseChat(raw: string, opts: ParseOptions = {}): ParsedChat {
   }
   flush();
 
-  let meIndex = 0;
-  for (let i = 1; i < counts.length; i++)
-    if ((counts[i] ?? 0) > (counts[meIndex] ?? 0)) meIndex = i;
+  // Whose messages sit on the right? The archive name is authoritative when it
+  // helps: exports are titled after the other party — "WhatsApp Chat with Ann"
+  // — so a sender carrying the chat's name can never be "me", whatever the
+  // message counts say. (Real phones also export the owner under junk names
+  // like "-".) Only when the name decides nothing does the busiest sender win.
+  const named = opts.chatName !== undefined ? senderIdx.get(opts.chatName.trim()) : undefined;
+  let meIndex = -1;
+  for (let i = 0; i < counts.length; i++) {
+    if (i === named && senders.length > 1) continue;
+    if (meIndex < 0 || (counts[i] ?? 0) > (counts[meIndex] ?? 0)) meIndex = i;
+  }
+  if (meIndex < 0) meIndex = 0;
 
   const other = senders.find((_, i) => i !== meIndex);
   return {
