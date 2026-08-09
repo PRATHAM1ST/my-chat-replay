@@ -311,26 +311,28 @@
   --wa-panel: oklch(0.2851 0.0209 234.05); /* #202c33 */
   --wa-panel-foreground: oklch(0.9436 0.0051 228.82); /* #e9edef */
   --wa-elevated: oklch(0.2851 0.0209 234.05); /* #202c33 */
-  --wa-chat: oklch(0.1854 0.0182 238.21); /* #0b141a */
+  --wa-chat: oklch(0.1646 0.0142 243.8); /* #090f14 — sampled; darker than Web */
   --wa-hover: oklch(0.2851 0.0209 234.05); /* #202c33 */
   --wa-active: oklch(0.3351 0.0253 234.86); /* #2a3942 */
   --wa-input: oklch(0.2851 0.0209 234.05); /* #202c33 */
 
-  /* bubbles — dark. The user-supplied ground truth is WhatsApp for Android,
-     whose dark bubbles differ from the Web client's: sent is a deep forest
-     green (#144d37), received the slate of the panels (#1f2c34). */
-  --wa-in: oklch(0.2848 0.023 235.66); /* #1f2c34 */
+  /* bubbles — dark. The user-supplied ground truth is WhatsApp for Android;
+     every value below is the median sampled off their real screenshots:
+     sent #134d37 forest green, received #1f272a neutral charcoal (less blue
+     than the Web client), date chips on the same charcoal surface. */
+  --wa-in: oklch(0.2662 0.0126 222.54); /* #1f272a */
   --wa-in-foreground: oklch(0.9436 0.0051 228.82); /* #e9edef */
   --wa-out: oklch(0.377 0.0699 163.42); /* #144d37 */
   --wa-out-foreground: oklch(0.9436 0.0051 228.82); /* #e9edef */
-  --wa-system: oklch(0.2456 0.0195 239.11); /* #182229 */
+  --wa-system: oklch(0.2662 0.0126 222.54); /* #1f272a — same surface as in */
   --wa-system-foreground: oklch(0.6637 0.0236 235.2); /* #8696a0 */
-  --wa-e2e: oklch(0.2456 0.0195 239.11); /* #182229 */
+  --wa-e2e: oklch(0.2662 0.0126 222.54); /* #1f272a */
   --wa-e2e-foreground: oklch(0.8846 0.1189 83.16); /* #ffd279 amber on dark */
 
-  /* accents — dark */
-  --wa-teal: oklch(0.6509 0.1283 170.43); /* #00a884 */
-  --wa-green: oklch(0.6509 0.1283 170.43); /* #00a884 */
+  /* accents — dark. Android's current brand green, sampled off the real
+     screenshots (#21c063), not the Web client's legacy teal. */
+  --wa-teal: oklch(0.7102 0.1817 151.18); /* #21c063 */
+  --wa-green: oklch(0.7102 0.1817 151.18); /* #21c063 */
   --wa-tick: oklch(0.7549 0.117 229.73); /* #53bdeb */
   --wa-meta: oklch(0.6637 0.0236 235.2); /* #8696a0 */
   --wa-icon: oklch(0.7817 0.0167 233.09); /* #aebac1 */
@@ -439,12 +441,12 @@
 .wa-bubble-tail-in::before {
   left: -8px;
   background-color: var(--wa-in);
-  clip-path: path("M8 0 L8 13 C5.2 8.5 2.6 4.4 0 0 Z");
+  clip-path: path("M8 0 L8 13 C7.6 8 4.5 2.8 0 0 Z");
 }
 .wa-bubble-tail-out::before {
   right: -8px;
   background-color: var(--wa-out);
-  clip-path: path("M0 0 L0 13 C2.8 8.5 5.4 4.4 8 0 Z");
+  clip-path: path("M0 0 L0 13 C0.4 8 3.5 2.8 8 0 Z");
 }
 
 /* Search hit that is currently selected — WhatsApp flashes the whole bubble. */

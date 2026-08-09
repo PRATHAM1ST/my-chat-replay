@@ -232,8 +232,8 @@ function QuoteBlock({
         e.stopPropagation();
         onJump(quoted.index);
       }}
-      className={`relative block cursor-pointer overflow-hidden rounded-[8px] bg-black/[0.06] text-left transition-colors hover:bg-black/[0.09] dark:bg-black/[0.22] dark:hover:bg-black/[0.3] ${
-        mediaCard ? "mb-[3px] w-full min-w-40" : "-mx-1 mb-1 w-[calc(100%+8px)] min-w-[168px]"
+      className={`relative block cursor-pointer overflow-hidden rounded-[8px] bg-black/[0.06] text-left transition-colors hover:bg-black/[0.09] dark:bg-black/[0.11] dark:hover:bg-black/[0.18] ${
+        mediaCard ? "mb-[3px] w-full min-w-40" : "-mx-[5px] mb-1 w-[calc(100%+10px)] min-w-[168px]"
       }`}
     >
       <span className="absolute inset-y-0 left-0 w-[4px]" style={{ background: quoted.color }} />
@@ -262,7 +262,7 @@ function CallCard({ text }: { text: string }) {
         className={`grid size-10 shrink-0 place-items-center rounded-full ${
           call.missed
             ? "bg-destructive/12 text-destructive"
-            : "bg-black/[0.07] text-wa-icon dark:bg-white/[0.1]"
+            : "bg-black/[0.07] text-wa-icon dark:bg-black/[0.1]"
         }`}
       >
         <Icon className="size-5" />
@@ -523,7 +523,7 @@ export const MessageBubble = memo(function MessageBubble({
 
         {showName && !isMe && (
           <p
-            className={`${mediaCard ? "px-1.5 pt-1" : ""} mb-[3px] truncate text-[12.8px] font-medium leading-[17px]`}
+            className={`${mediaCard ? "w-0 min-w-full px-1.5 pt-1" : ""} mb-[3px] truncate text-[12.8px] font-medium leading-[17px]`}
             style={{ color: `var(--wa-name-${colorIdx})` }}
           >
             {senderName}
@@ -551,7 +551,9 @@ export const MessageBubble = memo(function MessageBubble({
         {!overlayStamp && (
           <div
             className={`flex flex-wrap items-end justify-end gap-x-2 ${
-              mediaCard && msg.text ? "px-1.5 pb-[3px] pt-1" : ""
+              /* the caption wraps at the picture's width — it never widens the
+                 bubble past the artwork, exactly like the app */
+              mediaCard && msg.text ? "w-0 min-w-full px-1.5 pb-[3px] pt-1" : ""
             }`}
           >
             {msg.kind === "call" ? (

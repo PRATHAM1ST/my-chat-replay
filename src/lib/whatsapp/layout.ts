@@ -9,10 +9,10 @@
  */
 import type { Msg } from "./types";
 
-/** WhatsApp caps picture bubbles at roughly this box (measured on Android —
- * portrait phone screenshots render about 290x600, not letterboxed). */
-export const MEDIA_MAX_W = 300;
-export const MEDIA_MAX_H = 640;
+/** WhatsApp caps picture bubbles at this box (measured on Android — a
+ * portrait phone screenshot renders about 261x580, not letterboxed). */
+export const MEDIA_MAX_W = 262;
+export const MEDIA_MAX_H = 580;
 export const MEDIA_MIN_W = 140;
 /** Slot reserved before the real aspect ratio is known. */
 export const MEDIA_FALLBACK = { w: 260, h: 200 };
