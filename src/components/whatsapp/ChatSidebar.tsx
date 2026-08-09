@@ -250,10 +250,11 @@ export function ChatSidebar({
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => {
-                if (confirm === "all") onClearAll();
-                else if (confirm) onRemove(confirm);
+                if (typeof confirm === "object" && confirm) onRemove(confirm);
+                else if (confirm) onClearAll();
                 setConfirm(null);
               }}
+
             >
               {all ? "Clear all" : "Remove"}
             </AlertDialogAction>
