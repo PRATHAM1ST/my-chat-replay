@@ -229,6 +229,37 @@ export function ChatSidebar({
       >
         <MessageSquarePlus className="size-6" />
       </button>
+
+      <AlertDialog open={confirm !== null} onOpenChange={(open) => !open && setConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {all
+                ? "Clear all chats?"
+                : `Remove "${(confirm && confirm !== "all" && (confirm.chatName || confirm.name)) || ""}"?`}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {all
+                ? "Every chat disappears from this list, along with its saved names, perspective and reading position. Your export files on this device are not deleted — you can open them again any time."
+                : "This chat disappears from the list, along with its saved names, perspective and reading position. The export file on your device is not deleted — you can open it again any time."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (confirm === "all") onClearAll();
+                else if (confirm) onRemove(confirm);
+                setConfirm(null);
+              }}
+            >
+              {all ? "Clear all" : "Remove"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </aside>
   );
 }
+
