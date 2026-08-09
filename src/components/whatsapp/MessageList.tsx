@@ -23,6 +23,14 @@ interface Props {
   matchSet: Set<number>;
   starredSet: Set<number>;
   onToggleStar: (index: number) => void;
+  /** replyIndex -> quotedIndex, curated by the user */
+  replies: Map<number, number>;
+  /** true while the user is picking which message a reply quotes */
+  linking: boolean;
+  onPickQuoted: (index: number) => void;
+  onQuoteJump: (index: number) => void;
+  onStartReplyLink: (index: number) => void;
+  onRemoveReplyLink: (index: number) => void;
   activeIndex: number | null;
   /** {index, nonce} — index is a position inside `messages` */
   scrollTarget: { index: number; nonce: number } | null;
@@ -46,6 +54,10 @@ interface RowProps {
   isStarred: boolean;
   onToggleStar: (index: number) => void;
   mentionRe: RegExp | null;
+  quoted: { name: string; colorIdx: number; text: string; kind: Msg["kind"]; index: number } | null;
+  onQuoteJump: (index: number) => void;
+  onStartReplyLink: (index: number) => void;
+  onRemoveReplyLink: (index: number) => void;
   onOpenMedia: (msg: Msg, url: string) => void;
 }
 
@@ -72,6 +84,10 @@ const Row = memo(function Row({
   isStarred,
   onToggleStar,
   mentionRe,
+  quoted,
+  onQuoteJump,
+  onStartReplyLink,
+  onRemoveReplyLink,
   onOpenMedia,
 }: RowProps) {
   const newDay = prevTs === null || dayKey(prevTs) !== dayKey(msg.ts);
@@ -97,6 +113,10 @@ const Row = memo(function Row({
         isStarred={isStarred}
         onToggleStar={onToggleStar}
         mentionRe={mentionRe}
+        quoted={quoted}
+        onQuoteJump={onQuoteJump}
+        onStartReplyLink={onStartReplyLink}
+        onRemoveReplyLink={onRemoveReplyLink}
         tail={newGroup}
         client={client}
         onOpenMedia={onOpenMedia}
@@ -114,6 +134,12 @@ export function MessageList({
   matchSet,
   starredSet,
   onToggleStar,
+  replies,
+  linking,
+  onPickQuoted,
+  onQuoteJump,
+  onStartReplyLink,
+  onRemoveReplyLink,
   activeIndex,
   scrollTarget,
   onOpenMedia,
@@ -148,9 +174,10 @@ export function MessageList({
         showName: group && !!msg && msg.s >= 0 && (newDay || prev?.s !== msg.s),
         cpl,
         ratio: client.ratio(msg?.file),
+        quoted: !!msg && replies.has(msg.i),
       });
     },
-    [messages, client, cpl, group],
+    [messages, client, cpl, group, replies],
   );
 
   const virtualizer = useVirtualizer({
@@ -343,8 +370,34 @@ export function MessageList({
             if (!msg) return null;
             const prev = vi.index > 0 ? messages[vi.index - 1] : undefined;
 
+            const quotedIdx = replies.get(msg.i);
+            const quotedMsg = quotedIdx !== undefined ? messages[quotedIdx] : undefined;
+            const quoted = quotedMsg
+              ? {
+                  name: quotedMsg.s >= 0 ? (senders[quotedMsg.s] ?? "Unknown") : "System",
+                  colorIdx: nameColor(Math.max(0, quotedMsg.s)),
+                  text: quotedMsg.text,
+                  kind: quotedMsg.kind,
+                  index: quotedMsg.i,
+                }
+              : null;
+
             return (
-              <div key={vi.key} data-index={vi.index} ref={measure} className="wa-row">
+              <div
+                key={vi.key}
+                data-index={vi.index}
+                ref={measure}
+                className={`wa-row ${linking ? "cursor-crosshair" : ""}`}
+                onClickCapture={
+                  linking
+                    ? (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onPickQuoted(msg.i);
+                      }
+                    : undefined
+                }
+              >
                 <Row
                   msg={msg}
                   prevTs={prev ? prev.ts : null}
@@ -358,6 +411,10 @@ export function MessageList({
                   isStarred={starredSet.has(msg.i)}
                   onToggleStar={onToggleStar}
                   mentionRe={mentionRe}
+                  quoted={quoted}
+                  onQuoteJump={onQuoteJump}
+                  onStartReplyLink={onStartReplyLink}
+                  onRemoveReplyLink={onRemoveReplyLink}
                   onOpenMedia={onOpenMedia}
                 />
               </div>

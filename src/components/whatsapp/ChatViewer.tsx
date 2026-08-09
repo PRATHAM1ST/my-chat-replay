@@ -25,6 +25,7 @@ import {
 import { displayNames, getPrefs, savePrefs, type ChatPrefs } from "@/lib/whatsapp/prefs";
 import { onLaunchWithFile } from "@/lib/whatsapp/launch";
 import { hasPendingShare, registerPwaWorker, takeSharedFile } from "@/lib/whatsapp/share";
+import { getReplies, saveReplies, withLink, withoutLink } from "@/lib/whatsapp/replies";
 import { getStars, withToggled, saveStars } from "@/lib/whatsapp/stars";
 
 import { ChatHeader } from "./ChatHeader";
@@ -54,6 +55,9 @@ export function ChatViewer() {
   const [retry, setRetry] = useState<LibraryEntry | null>(null);
   const [canShare, setCanShare] = useState(false);
   const [stars, setStars] = useState<Set<number>>(new Set());
+  const [replies, setReplies] = useState<Map<number, number>>(new Map());
+  /** index of the reply whose quoted message is being picked, or null */
+  const [linking, setLinking] = useState<number | null>(null);
   /** the manifest shortcut lands here with ?action=open */
   const [pickerView, setPickerView] = useState(false);
   const [dropHover, setDropHover] = useState(false);
@@ -185,6 +189,8 @@ export function ChatViewer() {
         setLastId(id);
         setActiveId(id);
         setStars(getStars(id));
+        setReplies(getReplies(id));
+        setLinking(null);
         setPickerView(false);
         void refreshLibrary();
 
@@ -235,6 +241,41 @@ export function ChatViewer() {
     },
     [activeId],
   );
+
+  const pickQuoted = useCallback(
+    (quotedIndex: number) => {
+      setLinking((from) => {
+        if (from !== null && from !== quotedIndex) {
+          setReplies((prev) => {
+            const next = withLink(prev, from, quotedIndex);
+            saveReplies(activeId, next);
+            return next;
+          });
+        }
+        return null;
+      });
+    },
+    [activeId],
+  );
+
+  const removeReplyLink = useCallback(
+    (index: number) => {
+      setReplies((prev) => {
+        const next = withoutLink(prev, index);
+        saveReplies(activeId, next);
+        return next;
+      });
+    },
+    [activeId],
+  );
+
+  // Esc backs out of quote-picking, like every other mode in the app.
+  useEffect(() => {
+    if (linking === null) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setLinking(null);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [linking]);
 
   /**
    * Open a batch of archives: the first one on screen, the rest imported into
@@ -619,6 +660,8 @@ export function ChatViewer() {
     setMobileChatOpen(false);
     setActiveId(null);
     setStars(new Set());
+    setReplies(new Map());
+    setLinking(null);
     void refreshLibrary();
   }, [refreshLibrary, resetSearch]);
 
@@ -761,6 +804,12 @@ export function ChatViewer() {
               matchSet={matchSet}
               starredSet={stars}
               onToggleStar={toggleStar}
+              replies={replies}
+              linking={linking !== null}
+              onPickQuoted={pickQuoted}
+              onQuoteJump={jumpTo}
+              onStartReplyLink={(i) => setLinking(i)}
+              onRemoveReplyLink={removeReplyLink}
               activeIndex={activeIndex}
               scrollTarget={scrollTarget}
               onOpenMedia={(msg) => openMedia(msg)}
@@ -838,6 +887,21 @@ export function ChatViewer() {
         onIndex={setLightboxIdx}
         onClose={() => setLightboxIdx(null)}
       />
+
+      {linking !== null && (
+        <div className="wa-fade-in pointer-events-none fixed inset-x-0 top-3 z-[75] flex justify-center px-3">
+          <div className="pointer-events-auto flex items-center gap-3 rounded-xl bg-wa-elevated px-3.5 py-2.5 text-[13.5px] text-wa-panel-foreground shadow-[var(--wa-shadow-float)] ring-1 ring-black/5 dark:ring-white/10">
+            <span>Tap the message this one replies to</span>
+            <button
+              type="button"
+              onClick={() => setLinking(null)}
+              className="shrink-0 cursor-pointer rounded-full bg-wa-input px-3 py-1 text-[13px] font-medium hover:bg-wa-hover"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       {dropHover && (
         <div className="pointer-events-none fixed inset-0 z-[70] flex items-center justify-center bg-wa-app/80 p-6 backdrop-blur-sm">

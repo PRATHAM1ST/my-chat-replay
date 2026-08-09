@@ -76,12 +76,14 @@ export interface RowShape {
   showName: boolean;
   cpl: number;
   ratio?: Ratio | undefined;
+  /** the bubble carries a quoted-reply block above its content */
+  quoted?: boolean;
 }
 
 /** Height guess for one transcript row, day divider included. */
 export function estimateRow(msg: Msg | undefined, shape: RowShape): number {
   if (!msg) return 64;
-  const base = (shape.newDay ? DAY_CHIP : 0) + GAP;
+  const base = (shape.newDay ? DAY_CHIP : 0) + GAP + (shape.quoted ? 50 : 0);
   if (msg.kind === "system") return base + 36;
 
   const name = shape.showName ? NAME : 0;

@@ -5,14 +5,16 @@ import {
   ChevronDown,
   Copy,
   Phone,
+  Reply,
   Share2,
   Star,
   StarOff,
   Video,
+  X,
 } from "lucide-react";
 import { formatDay, formatTime } from "@/lib/whatsapp/format";
 import type { WaClient } from "@/lib/whatsapp/client";
-import type { Msg } from "@/lib/whatsapp/types";
+import type { Msg, MsgKind } from "@/lib/whatsapp/types";
 import { splitMentions } from "@/lib/whatsapp/mentions";
 import { isDeletedMessage, parseCallLine, splitFormatRuns } from "@/lib/whatsapp/richtext";
 import { MediaAttachment } from "./MediaAttachment";
@@ -34,6 +36,11 @@ interface Props {
   onToggleStar: (index: number) => void;
   /** compiled from the participant list; null when the chat has no names */
   mentionRe: RegExp | null;
+  /** the message this one quotes, when the user linked one */
+  quoted: { name: string; colorIdx: number; text: string; kind: MsgKind; index: number } | null;
+  onQuoteJump: (index: number) => void;
+  onStartReplyLink: (index: number) => void;
+  onRemoveReplyLink: (index: number) => void;
   client: WaClient;
   onOpenMedia: (msg: Msg, url: string) => void;
 }
@@ -184,6 +191,62 @@ function emojiScale(text: string): "lg" | "md" | null {
 
 const MEDIA_CARD = new Set(["image", "video", "sticker"]);
 
+const QUOTE_KIND_LABEL: Record<string, string> = {
+  image: "📷 Photo",
+  video: "🎥 Video",
+  sticker: "💟 Sticker",
+  audio: "🎤 Voice message",
+  document: "📄 Document",
+  call: "📞 Call",
+};
+
+/**
+ * The quoted-message block WhatsApp draws inside a reply bubble: colour bar,
+ * sender name in their palette colour, one-line snippet. Tapping it scrolls to
+ * the original, exactly like the app.
+ */
+function QuoteBlock({
+  quoted,
+  mediaCard,
+  onJump,
+}: {
+  quoted: NonNullable<Props["quoted"]>;
+  mediaCard: boolean;
+  onJump: (index: number) => void;
+}) {
+  const snippet = quoted.text
+    ? quoted.text.replace(/\s+/g, " ").slice(0, 120)
+    : (QUOTE_KIND_LABEL[quoted.kind] ?? "Message");
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onJump(quoted.index);
+      }}
+      className={`relative block w-full min-w-40 cursor-pointer overflow-hidden rounded-[6px] bg-black/[0.05] text-left transition-colors hover:bg-black/[0.08] dark:bg-white/[0.06] dark:hover:bg-white/[0.09] ${
+        mediaCard ? "mb-[3px]" : "mb-1"
+      }`}
+    >
+      <span
+        className="absolute inset-y-0 left-0 w-[4px]"
+        style={{ background: `var(--wa-name-${quoted.colorIdx})` }}
+      />
+      <span className="block py-[5px] pl-2.5 pr-2">
+        <span
+          className="block truncate text-[12.8px] font-medium leading-[17px]"
+          style={{ color: `var(--wa-name-${quoted.colorIdx})` }}
+        >
+          <Emoji text={quoted.name} />
+        </span>
+        <span className="block truncate text-[13px] leading-[18px] text-wa-meta">
+          <Emoji text={snippet} />
+        </span>
+      </span>
+    </button>
+  );
+}
+
 /** Call events, drawn as the app draws them: icon disc, label, detail. */
 function CallCard({ text }: { text: string }) {
   const call = parseCallLine(text) ?? { video: false, missed: false, label: text, sub: null };
@@ -229,6 +292,10 @@ export const MessageBubble = memo(function MessageBubble({
   isStarred,
   onToggleStar,
   mentionRe,
+  quoted,
+  onQuoteJump,
+  onStartReplyLink,
+  onRemoveReplyLink,
   client,
   onOpenMedia,
 }: Props) {
@@ -310,6 +377,15 @@ export const MessageBubble = memo(function MessageBubble({
                 </>
               )}
             </MenuItem>
+            {quoted ? (
+              <MenuItem onSelect={() => onRemoveReplyLink(msg.i)}>
+                <X className="size-4 text-wa-meta" /> Remove reply link
+              </MenuItem>
+            ) : (
+              <MenuItem onSelect={() => onStartReplyLink(msg.i)}>
+                <Reply className="size-4 text-wa-meta" /> Link as reply…
+              </MenuItem>
+            )}
             {!!msg.text && (
               <MenuItem onSelect={copyText}>
                 <Copy className="size-4 text-wa-meta" /> Copy
@@ -331,6 +407,8 @@ export const MessageBubble = memo(function MessageBubble({
             {senderName}
           </p>
         )}
+
+        {quoted && <QuoteBlock quoted={quoted} mediaCard={mediaCard} onJump={onQuoteJump} />}
 
         {hasMedia && (
           <div className={mediaCard ? "relative overflow-hidden rounded-[6px]" : "mb-1"}>
