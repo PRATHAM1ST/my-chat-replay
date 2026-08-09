@@ -69,11 +69,13 @@ export function ChatSidebar({
   onAdd,
   onOpen,
   onRemove,
+  onClearAll,
   dark,
   onToggleDark,
 }: Props) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
+  const [confirm, setConfirm] = useState<LibraryEntry | "all" | null>(null);
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -86,13 +88,17 @@ export function ChatSidebar({
   }, [entries, query, filter, needsPermission]);
 
   const lockedCount = entries.filter((e) => needsPermission.has(e.id)).length;
+  const all = confirm === "all";
 
   return (
     <aside className="relative flex h-full min-h-0 w-full flex-col border-r border-wa-divider bg-wa-surface md:w-[380px] lg:w-[420px]">
-      <header className="flex h-[60px] shrink-0 items-center justify-between gap-2 border-b border-wa-divider bg-wa-panel pl-4 pr-2">
-        <h1 className="truncate text-[21px] font-bold tracking-tight text-wa-panel-foreground">
-          Chats
-        </h1>
+      <header className="flex h-[60px] shrink-0 items-center justify-between gap-2 border-b border-wa-divider bg-wa-panel pl-3 pr-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <Logo size={26} />
+          <h1 className="truncate text-[21px] font-bold tracking-tight text-wa-panel-foreground">
+            Chats
+          </h1>
+        </div>
         <div className="flex shrink-0 items-center">
           <IconButton onClick={onAdd} aria-label="Open a chat export">
             <MessageSquarePlus className="size-[21px]" />
@@ -116,6 +122,17 @@ export function ChatSidebar({
                 )}
                 {dark ? "Light theme" : "Dark theme"}
               </MenuItem>
+              {entries.length > 0 && (
+                <>
+                  <MenuSeparator />
+                  <MenuItem onSelect={() => setConfirm("all")} className="text-destructive">
+                    <Trash2 className="size-4" /> Clear all chats
+                  </MenuItem>
+                </>
+              )}
+            </MenuContent>
+          </Menu>
+
             </MenuContent>
           </Menu>
         </div>
