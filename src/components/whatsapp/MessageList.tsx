@@ -7,6 +7,12 @@ import type { WaClient } from "@/lib/whatsapp/client";
 import type { Msg } from "@/lib/whatsapp/types";
 import { MessageBubble } from "./MessageBubble";
 
+export interface ScrollPosition {
+  index: number;
+  offset: number;
+  atBottom: boolean;
+}
+
 interface Props {
   messages: Msg[];
   senders: string[];
@@ -18,7 +24,12 @@ interface Props {
   /** {index, nonce} — index is a position inside `messages` */
   scrollTarget: { index: number; nonce: number } | null;
   onOpenMedia: (msg: Msg, url: string) => void;
+  /** where this chat was left off last time, if anywhere */
+  restore?: ScrollPosition | null;
+  /** debounced report of the current reading position */
+  onPosition?: (pos: ScrollPosition) => void;
 }
+
 
 interface RowProps {
   msg: Msg;
@@ -93,7 +104,10 @@ export function MessageList({
   activeIndex,
   scrollTarget,
   onOpenMedia,
+  restore,
+  onPosition,
 }: Props) {
+
   const parentRef = useRef<HTMLDivElement>(null);
   const [atBottom, setAtBottom] = useState(true);
   const [topDay, setTopDay] = useState<string | null>(null);
@@ -183,15 +197,36 @@ export function MessageList({
     [messages.length, virtualizer],
   );
 
-  // Land on the newest message whenever a different chat is opened.
+  // Land where the reader left off — or on the newest message when there is no
+  // stored position — whenever a different chat is opened. Captured once per
+  // mount: the list is keyed by chat, so a remount *is* a new chat.
+  const restoreRef = useRef(restore);
   const lastKey = useRef<string>("");
   useLayoutEffect(() => {
     const key = `${messages.length}:${messages[0]?.ts ?? 0}`;
     if (key === lastKey.current) return;
     lastKey.current = key;
-    setAtBottom(true);
-    toBottom();
-  }, [messages, toBottom]);
+    const saved = restoreRef.current;
+    restoreRef.current = null;
+    const index = saved && !saved.atBottom ? Math.min(saved.index, messages.length - 1) : -1;
+    if (index < 0) {
+      setAtBottom(true);
+      toBottom();
+      return;
+    }
+    setAtBottom(false);
+    // Rows above the target are still estimates, so re-seek a few frames while
+    // measurements settle, then absorb the sub-row offset.
+    let tries = 0;
+    const settle = () => {
+      virtualizer.scrollToIndex(index, { align: "start" });
+      const el = parentRef.current;
+      if (el && saved) el.scrollTop += saved.offset;
+      if (tries++ < 5) requestAnimationFrame(settle);
+    };
+    settle();
+  }, [messages, toBottom, virtualizer]);
+
 
   useEffect(() => {
     if (!scrollTarget) return;
@@ -201,18 +236,41 @@ export function MessageList({
     return () => cancelAnimationFrame(id);
   }, [scrollTarget, virtualizer]);
 
-  // Sticky day chip + "jump to latest" state, sampled from the scroll element
-  // rather than from React state so scrolling stays render-free.
+  // Sticky day chip, "jump to latest" state and the remembered reading
+  // position, all sampled from the scroll element rather than from React state
+  // so scrolling stays render-free. Saving is debounced and flushed on unmount
+  // (closing a chat) and when the tab goes away.
+  const positionRef = useRef(onPosition);
+  positionRef.current = onPosition;
   useEffect(() => {
     const el = parentRef.current;
     if (!el) return;
     let frame = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let pending: ScrollPosition | null = null;
+
+    const flush = () => {
+      if (timer) clearTimeout(timer);
+      timer = undefined;
+      if (pending) positionRef.current?.(pending);
+      pending = null;
+    };
+
     const sample = () => {
       frame = 0;
       const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
-      setAtBottom(distance < 120);
+      const bottom = distance < 120;
+      setAtBottom(bottom);
       const first = virtualizer.getVirtualItemForOffset(el.scrollTop + 12);
       const msg = first ? messages[first.index] : undefined;
+      if (first) {
+        pending = {
+          index: first.index,
+          offset: Math.round(el.scrollTop - first.start),
+          atBottom: bottom,
+        };
+        if (!timer) timer = setTimeout(flush, 400);
+      }
       if (!first || !msg) {
         setTopDay(null);
         return;
@@ -227,13 +285,22 @@ export function MessageList({
     const onScroll = () => {
       if (!frame) frame = requestAnimationFrame(sample);
     };
+    const onHide = () => {
+      if (document.visibilityState === "hidden") flush();
+    };
     sample();
     el.addEventListener("scroll", onScroll, { passive: true });
+    document.addEventListener("visibilitychange", onHide);
+    window.addEventListener("pagehide", flush);
     return () => {
       el.removeEventListener("scroll", onScroll);
+      document.removeEventListener("visibilitychange", onHide);
+      window.removeEventListener("pagehide", flush);
       if (frame) cancelAnimationFrame(frame);
+      flush();
     };
   }, [messages, virtualizer]);
+
 
   return (
     <div className="wa-doodle relative flex min-h-0 flex-1">

@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { MessageSquare } from "lucide-react";
+
 import { WaClient } from "@/lib/whatsapp/client";
 import type { Msg, ParsedChat, SearchScope } from "@/lib/whatsapp/types";
 import {
+  clearChats,
   entryId,
   fileFromEntry,
   getLastId,
@@ -23,7 +24,9 @@ import { ChatSidebar } from "./ChatSidebar";
 import { ContactInfo } from "./ContactInfo";
 import { DropZone } from "./DropZone";
 import { Lightbox } from "./Lightbox";
+import { Logo } from "./Logo";
 import { MessageList } from "./MessageList";
+
 import { NavRail } from "./NavRail";
 import { PwaInstallBanner } from "./PwaInstallBanner";
 import { SearchPanel } from "./SearchPanel";
@@ -284,12 +287,42 @@ export function ChatViewer() {
     [mediaMsgs],
   );
 
+  // Prefs are also written outside React (scroll position, every ~400ms while
+  // reading), so keep a mirror the writer can merge into without re-rendering.
+  const prefsRef = useRef<ChatPrefs>({});
+  prefsRef.current = prefs;
+
   const persist = useCallback(
     (patch: ChatPrefs) => {
       setPrefs((prev) => savePrefs(activeId, { ...prev, ...patch }));
     },
     [activeId],
   );
+
+  const savePosition = useCallback(
+    (pos: { index: number; offset: number; atBottom: boolean }) => {
+      if (!activeId) return;
+      const next = {
+        ...prefsRef.current,
+        scrollIndex: pos.index,
+        scrollOffset: pos.offset,
+        atBottom: pos.atBottom,
+      };
+      prefsRef.current = next;
+      savePrefs(activeId, next);
+    },
+    [activeId],
+  );
+
+  const restore = useMemo(
+    () => ({
+      index: prefs.scrollIndex ?? 0,
+      offset: prefs.scrollOffset ?? 0,
+      atBottom: prefs.atBottom ?? prefs.scrollIndex === undefined,
+    }),
+    [prefs.scrollIndex, prefs.scrollOffset, prefs.atBottom],
+  );
+
 
   const changeMe = useCallback(
     (i: number) => {
@@ -375,6 +408,14 @@ export function ChatViewer() {
     void refreshLibrary();
   }, [refreshLibrary, resetSearch]);
 
+  /** Forget every chat we know about — the archives themselves stay untouched. */
+  const clearAll = useCallback(async () => {
+    await clearChats();
+    closeChat();
+  }, [closeChat]);
+
+
+
   const toggleSearch = useCallback(() => {
     setSearchOpen((open) => {
       if (open) resetSearch();
@@ -451,6 +492,8 @@ export function ChatViewer() {
           onAdd={() => void addArchive()}
           onOpen={(entry) => void openEntry(entry)}
           onRemove={(entry) => void removeEntry(entry)}
+          onClearAll={() => void clearAll()}
+
           dark={dark}
           onToggleDark={() => setDark((value) => !value)}
         />
@@ -485,14 +528,18 @@ export function ChatViewer() {
               activeIndex={activeIndex}
               scrollTarget={scrollTarget}
               onOpenMedia={(msg) => openMedia(msg)}
+              restore={restore}
+              onPosition={savePosition}
+
             />
           </>
         ) : (
           <div className="wa-doodle flex flex-1 items-center justify-center px-6 text-center">
             <div className="relative z-10 max-w-sm">
-              <span className="mx-auto flex size-16 items-center justify-center rounded-2xl bg-wa-surface text-wa-meta shadow-[var(--wa-shadow-panel)]">
-                <MessageSquare className="size-8" />
+              <span className="mx-auto flex size-16 items-center justify-center rounded-2xl bg-wa-surface shadow-[var(--wa-shadow-panel)]">
+                <Logo size={40} />
               </span>
+
               <h2 className="mt-5 text-[26px] font-light text-wa-panel-foreground">Chat Replay</h2>
               <p className="mt-2 text-[14px] text-wa-meta">
                 Pick a chat on the left, or open another export. Everything stays on this device.

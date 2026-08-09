@@ -10,7 +10,10 @@
  * never the archive contents.
  */
 
+import { clearAllPrefs, clearPrefs } from "./prefs";
+
 declare global {
+
   interface FileSystemFileHandle {
     queryPermission?: (d: { mode: "read" | "readwrite" }) => Promise<PermissionState>;
     requestPermission?: (d: { mode: "read" | "readwrite" }) => Promise<PermissionState>;
@@ -91,6 +94,9 @@ export async function removeChat(id: string) {
   } catch {
     /* ignore */
   }
+  // The archive on disk is never touched — we only forget our pointer to it
+  // and everything we stored about the chat.
+  clearPrefs(id);
   if (getLastId() === id) setLastId(null);
 }
 
@@ -100,8 +106,10 @@ export async function clearChats() {
   } catch {
     /* ignore */
   }
+  clearAllPrefs();
   setLastId(null);
 }
+
 
 export function getLastId(): string | null {
   try {

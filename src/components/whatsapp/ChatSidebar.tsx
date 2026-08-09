@@ -9,8 +9,19 @@ import {
   Sun,
   Trash2,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { formatBytes, formatListStamp } from "@/lib/whatsapp/format";
 import type { LibraryEntry } from "@/lib/whatsapp/library";
+import { Logo } from "./Logo";
 import {
   Avatar,
   Chip,
@@ -32,9 +43,11 @@ interface Props {
   onAdd: () => void;
   onOpen: (entry: LibraryEntry) => void;
   onRemove: (entry: LibraryEntry) => void;
+  onClearAll: () => void;
   dark: boolean;
   onToggleDark: () => void;
 }
+
 
 type Filter = "all" | "media" | "locked";
 
@@ -56,11 +69,13 @@ export function ChatSidebar({
   onAdd,
   onOpen,
   onRemove,
+  onClearAll,
   dark,
   onToggleDark,
 }: Props) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
+  const [confirm, setConfirm] = useState<LibraryEntry | "all" | null>(null);
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -73,13 +88,17 @@ export function ChatSidebar({
   }, [entries, query, filter, needsPermission]);
 
   const lockedCount = entries.filter((e) => needsPermission.has(e.id)).length;
+  const all = confirm === "all";
 
   return (
     <aside className="relative flex h-full min-h-0 w-full flex-col border-r border-wa-divider bg-wa-surface md:w-[380px] lg:w-[420px]">
-      <header className="flex h-[60px] shrink-0 items-center justify-between gap-2 border-b border-wa-divider bg-wa-panel pl-4 pr-2">
-        <h1 className="truncate text-[21px] font-bold tracking-tight text-wa-panel-foreground">
-          Chats
-        </h1>
+      <header className="flex h-[60px] shrink-0 items-center justify-between gap-2 border-b border-wa-divider bg-wa-panel pl-3 pr-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <Logo size={26} />
+          <h1 className="truncate text-[21px] font-bold tracking-tight text-wa-panel-foreground">
+            Chats
+          </h1>
+        </div>
         <div className="flex shrink-0 items-center">
           <IconButton onClick={onAdd} aria-label="Open a chat export">
             <MessageSquarePlus className="size-[21px]" />
@@ -103,6 +122,14 @@ export function ChatSidebar({
                 )}
                 {dark ? "Light theme" : "Dark theme"}
               </MenuItem>
+              {entries.length > 0 && (
+                <>
+                  <MenuSeparator />
+                  <MenuItem onSelect={() => setConfirm("all")} className="text-destructive">
+                    <Trash2 className="size-4" /> Clear all chats
+                  </MenuItem>
+                </>
+              )}
             </MenuContent>
           </Menu>
         </div>
@@ -173,10 +200,11 @@ export function ChatSidebar({
                     </span>
                   </button>
                   <IconButton
-                    onClick={() => onRemove(entry)}
-                    aria-label={`Remove ${title}`}
+                    onClick={() => setConfirm(entry)}
+                    aria-label={`Remove ${title} from this app`}
                     className="absolute right-2 top-1/2 size-8 -translate-y-1/2 bg-wa-surface/90 text-wa-meta opacity-0 backdrop-blur-sm hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100"
                   >
+
                     <Trash2 className="size-4" />
                   </IconButton>
                 </li>
@@ -201,6 +229,39 @@ export function ChatSidebar({
       >
         <MessageSquarePlus className="size-6" />
       </button>
+
+      <AlertDialog open={confirm !== null} onOpenChange={(open) => !open && setConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {all
+                ? "Clear all chats?"
+                : `Remove "${typeof confirm === "object" && confirm ? confirm.chatName || confirm.name : ""}"?`}
+            </AlertDialogTitle>
+
+            <AlertDialogDescription>
+              {all
+                ? "Every chat disappears from this list, along with its saved names, perspective and reading position. Your export files on this device are not deleted — you can open them again any time."
+                : "This chat disappears from the list, along with its saved names, perspective and reading position. The export file on your device is not deleted — you can open it again any time."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (typeof confirm === "object" && confirm) onRemove(confirm);
+                else if (confirm) onClearAll();
+                setConfirm(null);
+              }}
+
+            >
+              {all ? "Clear all" : "Remove"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </aside>
   );
 }
+
