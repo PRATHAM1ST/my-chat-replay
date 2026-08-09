@@ -408,6 +408,14 @@ export function ChatViewer() {
     void refreshLibrary();
   }, [refreshLibrary, resetSearch]);
 
+  /** Forget every chat we know about — the archives themselves stay untouched. */
+  const clearAll = useCallback(async () => {
+    await clearChats();
+    closeChat();
+  }, [closeChat]);
+
+
+
   const toggleSearch = useCallback(() => {
     setSearchOpen((open) => {
       if (open) resetSearch();
