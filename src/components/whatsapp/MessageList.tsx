@@ -20,6 +20,8 @@ interface Props {
   client: WaClient;
   query: string;
   matchSet: Set<number>;
+  starredSet: Set<number>;
+  onToggleStar: (index: number) => void;
   activeIndex: number | null;
   /** {index, nonce} — index is a position inside `messages` */
   scrollTarget: { index: number; nonce: number } | null;
@@ -40,6 +42,8 @@ interface RowProps {
   query: string;
   isMatch: boolean;
   isActive: boolean;
+  isStarred: boolean;
+  onToggleStar: (index: number) => void;
   onOpenMedia: (msg: Msg, url: string) => void;
 }
 
@@ -63,6 +67,8 @@ const Row = memo(function Row({
   query,
   isMatch,
   isActive,
+  isStarred,
+  onToggleStar,
   onOpenMedia,
 }: RowProps) {
   const newDay = prevTs === null || dayKey(prevTs) !== dayKey(msg.ts);
@@ -85,6 +91,8 @@ const Row = memo(function Row({
         query={query}
         isMatch={isMatch}
         isActive={isActive}
+        isStarred={isStarred}
+        onToggleStar={onToggleStar}
         tail={newGroup}
         client={client}
         onOpenMedia={onOpenMedia}
@@ -100,6 +108,8 @@ export function MessageList({
   client,
   query,
   matchSet,
+  starredSet,
+  onToggleStar,
   activeIndex,
   scrollTarget,
   onOpenMedia,
@@ -340,6 +350,8 @@ export function MessageList({
                   query={query}
                   isMatch={matchSet.has(msg.i)}
                   isActive={activeIndex === msg.i}
+                  isStarred={starredSet.has(msg.i)}
+                  onToggleStar={onToggleStar}
                   onOpenMedia={onOpenMedia}
                 />
               </div>

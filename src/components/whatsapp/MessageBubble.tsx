@@ -1,10 +1,11 @@
-import { memo } from "react";
-import { CheckCheck } from "lucide-react";
-import { formatTime } from "@/lib/whatsapp/format";
+import { memo, useCallback, useState } from "react";
+import { CheckCheck, ChevronDown, Copy, Share2, Star, StarOff } from "lucide-react";
+import { formatDay, formatTime } from "@/lib/whatsapp/format";
 import type { WaClient } from "@/lib/whatsapp/client";
 import type { Msg } from "@/lib/whatsapp/types";
 import { MediaAttachment } from "./MediaAttachment";
-import { Emoji } from "./ui";
+import { useLongPress } from "./useLongPress";
+import { Emoji, Menu, MenuContent, MenuItem, MenuTrigger } from "./ui";
 
 interface Props {
   msg: Msg;
@@ -17,6 +18,8 @@ interface Props {
   isActive: boolean;
   /** first bubble of a sender group — gets the corner tail */
   tail: boolean;
+  isStarred: boolean;
+  onToggleStar: (index: number) => void;
   client: WaClient;
   onOpenMedia: (msg: Msg, url: string) => void;
 }
@@ -84,6 +87,11 @@ function emojiScale(text: string): "lg" | "md" | null {
 
 const MEDIA_CARD = new Set(["image", "video", "sticker"]);
 
+/** The tiny star WhatsApp shows beside the time of a starred message. */
+function StarMark() {
+  return <Star className="size-[11px] shrink-0 fill-current" aria-label="Starred" />;
+}
+
 export const MessageBubble = memo(function MessageBubble({
   msg,
   isMe,
@@ -94,9 +102,24 @@ export const MessageBubble = memo(function MessageBubble({
   isMatch,
   isActive,
   tail,
+  isStarred,
+  onToggleStar,
   client,
   onOpenMedia,
 }: Props) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const openMenu = useCallback(() => setMenuOpen(true), []);
+  const hold = useLongPress(openMenu);
+
+  const copyText = useCallback(() => {
+    const stamp = `[${formatDay(msg.ts)}, ${formatTime(msg.ts)}] ${senderName}`;
+    void navigator.clipboard?.writeText(msg.text || stamp).catch(() => undefined);
+  }, [msg.text, msg.ts, senderName]);
+
+  const shareText = useCallback(() => {
+    void navigator.share?.({ text: `${senderName}: ${msg.text}` }).catch(() => undefined);
+  }, [msg.text, senderName]);
+
   if (msg.kind === "system") {
     return (
       <div className="flex justify-center px-4 py-1.5">
@@ -119,8 +142,9 @@ export const MessageBubble = memo(function MessageBubble({
   return (
     <div className={`flex px-[6%] py-[1px] md:px-[7%] ${isMe ? "justify-end" : "justify-start"}`}>
       <div
+        {...hold}
         className={[
-          "wa-bubble relative max-w-[85%] sm:max-w-[65%]",
+          "wa-bubble group/bubble relative max-w-[85%] sm:max-w-[65%]",
           bare
             ? "wa-emoji-transparent overflow-visible"
             : isMe
@@ -134,6 +158,46 @@ export const MessageBubble = memo(function MessageBubble({
           .filter(Boolean)
           .join(" ")}
       >
+        {/* WhatsApp's hover chevron; long-press or right-click on touch */}
+        <Menu open={menuOpen} onOpenChange={setMenuOpen}>
+          <MenuTrigger asChild>
+            <button
+              type="button"
+              aria-label="Message actions"
+              className={`pointer-events-none absolute right-1 top-1 z-10 grid size-7 cursor-pointer place-items-center rounded-full opacity-0 transition-opacity focus-visible:pointer-events-auto focus-visible:opacity-100 group-hover/bubble:pointer-events-auto group-hover/bubble:opacity-100 data-[state=open]:pointer-events-auto data-[state=open]:opacity-100 ${
+                overlayStamp && !sticker
+                  ? "bg-black/40 text-white backdrop-blur-[2px]"
+                  : "bg-black/10 text-wa-icon backdrop-blur-[2px] dark:bg-white/15"
+              }`}
+            >
+              <ChevronDown className="size-4" />
+            </button>
+          </MenuTrigger>
+          <MenuContent align={isMe ? "end" : "start"}>
+            <MenuItem onSelect={() => onToggleStar(msg.i)}>
+              {isStarred ? (
+                <>
+                  <StarOff className="size-4 text-wa-meta" /> Unstar
+                </>
+              ) : (
+                <>
+                  <Star className="size-4 text-wa-meta" /> Star message
+                </>
+              )}
+            </MenuItem>
+            {!!msg.text && (
+              <MenuItem onSelect={copyText}>
+                <Copy className="size-4 text-wa-meta" /> Copy
+              </MenuItem>
+            )}
+            {!!msg.text && typeof navigator !== "undefined" && !!navigator.share && (
+              <MenuItem onSelect={shareText}>
+                <Share2 className="size-4 text-wa-meta" /> Share
+              </MenuItem>
+            )}
+          </MenuContent>
+        </Menu>
+
         {showName && !isMe && !big && (
           <p
             className={`${mediaCard ? "px-1.5 pt-1" : ""} mb-[3px] truncate text-[12.8px] font-medium leading-[17px]`}
@@ -149,6 +213,7 @@ export const MessageBubble = memo(function MessageBubble({
             {overlayStamp && !sticker && (
               <span className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-end bg-gradient-to-t from-black/45 to-transparent px-2 pb-1 pt-6 text-[11px] leading-[15px] text-white">
                 <span className="flex items-center gap-[3px]">
+                  {isStarred && <StarMark />}
                   {msg.edited && <span className="italic opacity-80">edited</span>}
                   {formatTime(msg.ts)}
                   {isMe && <CheckCheck className="size-[15px] text-wa-tick" strokeWidth={2.2} />}
@@ -184,6 +249,7 @@ export const MessageBubble = memo(function MessageBubble({
                   : ""
               }`}
             >
+              {isStarred && <StarMark />}
               {msg.edited && <span className="italic">edited</span>}
               {formatTime(msg.ts)}
               {isMe && <CheckCheck className="size-[15px] text-wa-tick" strokeWidth={2.2} />}
@@ -193,6 +259,7 @@ export const MessageBubble = memo(function MessageBubble({
 
         {overlayStamp && sticker && (
           <span className="mt-0.5 flex items-center justify-end gap-[3px] text-[11px] leading-[15px] text-wa-meta">
+            {isStarred && <StarMark />}
             {formatTime(msg.ts)}
             {isMe && <CheckCheck className="size-[15px] text-wa-tick" strokeWidth={2.2} />}
           </span>

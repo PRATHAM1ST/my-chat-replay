@@ -73,5 +73,50 @@
         }
       ]
     }
-  }
+  },
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "launch_handler": {
+    "client_mode": [
+      "navigate-existing",
+      "auto"
+    ]
+  },
+  "categories": [
+    "utilities",
+    "productivity"
+  ],
+  "shortcuts": [
+    {
+      "name": "Open an export",
+      "short_name": "Open export",
+      "description": "Pick a WhatsApp .zip or _chat.txt to open",
+      "url": "/?action=open",
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/desktop.png",
+      "sizes": "1280x800",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "A chat export opened on desktop"
+    },
+    {
+      "src": "/screenshots/mobile.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Reading a chat on mobile"
+    }
+  ]
 }

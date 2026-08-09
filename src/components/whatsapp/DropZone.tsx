@@ -1,10 +1,11 @@
 import { useCallback, useRef, useState } from "react";
 import { FileArchive, LockKeyhole, MessageSquare, Search, Sparkles, Upload } from "lucide-react";
-import { pickArchive, supportsHandles, type LibraryEntry } from "@/lib/whatsapp/library";
+import { pickArchives, supportsHandles, type LibraryEntry } from "@/lib/whatsapp/library";
 import { Logo } from "./Logo";
 
 interface Props {
-  onFile: (file: File, handle?: FileSystemFileHandle) => void;
+  /** first file opens; the rest are imported into the library */
+  onFiles: (files: File[], firstHandle?: FileSystemFileHandle) => void;
   busy: boolean;
   phase: string;
   pct: number;
@@ -18,28 +19,32 @@ const POINTS = [
   { icon: Sparkles, text: "Handles hundreds of megabytes without breaking a sweat" },
 ];
 
-export function DropZone({ onFile, busy, phase, pct, error }: Props) {
+export function DropZone({ onFiles, busy, phase, pct, error }: Props) {
   const [over, setOver] = useState(false);
   const input = useRef<HTMLInputElement>(null);
 
   const pick = useCallback(
     (files: FileList | null) => {
-      const f = files?.[0];
-      if (f) onFile(f);
+      const list = Array.from(files ?? []);
+      if (list.length) onFiles(list);
     },
-    [onFile],
+    [onFiles],
   );
 
   // Prefer the native picker: it returns a handle we can remember for next time.
   const browse = useCallback(async () => {
     if (busy) return;
     if (supportsHandles) {
-      const picked = await pickArchive();
-      if (picked) onFile(picked.file, picked.handle);
+      const picked = await pickArchives();
+      if (picked?.length)
+        onFiles(
+          picked.map((p) => p.file),
+          picked[0]?.handle,
+        );
       return;
     }
     input.current?.click();
-  }, [busy, onFile]);
+  }, [busy, onFiles]);
 
   return (
     <main className="wa-doodle flex min-h-[100dvh] flex-col items-center justify-center px-5 py-12">
@@ -82,6 +87,7 @@ export function DropZone({ onFile, busy, phase, pct, error }: Props) {
             ref={input}
             type="file"
             accept=".zip,.txt"
+            multiple
             className="hidden"
             onChange={(e) => pick(e.target.files)}
           />

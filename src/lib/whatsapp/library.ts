@@ -14,6 +14,7 @@
  */
 
 import { clearAllPrefs, clearPrefs } from "./prefs";
+import { clearAllStars, clearStars } from "./stars";
 import { clearVault, deleteArchive, hasArchive, loadArchive } from "./vault";
 
 declare global {
@@ -103,6 +104,7 @@ export async function removeChat(id: string) {
   // our pointer to it, and everything we stored about the chat.
   await deleteArchive(id);
   clearPrefs(id);
+  clearStars(id);
   if (getLastId() === id) setLastId(null);
 }
 
@@ -114,6 +116,7 @@ export async function clearChats() {
   }
   await clearVault();
   clearAllPrefs();
+  clearAllStars();
   setLastId(null);
 }
 
@@ -189,13 +192,15 @@ export async function fileFromEntry(
   }
 }
 
-/** Open the native picker so we get a persistable handle. */
-export async function pickArchive(): Promise<{ file: File; handle?: FileSystemFileHandle } | null> {
+/** Open the native picker so we get persistable handles. Multi-select works. */
+export async function pickArchives(): Promise<
+  { file: File; handle?: FileSystemFileHandle }[] | null
+> {
   if (!supportsHandles) return null;
   try {
-    const [handle] =
+    const handles =
       (await window.showOpenFilePicker?.({
-        multiple: false,
+        multiple: true,
         types: [
           {
             description: "WhatsApp export",
@@ -203,8 +208,10 @@ export async function pickArchive(): Promise<{ file: File; handle?: FileSystemFi
           },
         ],
       })) ?? [];
-    if (!handle) return null;
-    return { file: await handle.getFile(), handle };
+    if (!handles.length) return null;
+    const picked: { file: File; handle?: FileSystemFileHandle }[] = [];
+    for (const handle of handles) picked.push({ file: await handle.getFile(), handle });
+    return picked;
   } catch {
     return null; // user cancelled
   }

@@ -9,7 +9,7 @@ import {
   fileFromEntry,
   getLastId,
   listChats,
-  pickArchive,
+  pickArchives,
   putChat,
   removeChat,
   setLastId,
@@ -24,7 +24,8 @@ import {
 } from "@/lib/whatsapp/vault";
 import { displayNames, getPrefs, savePrefs, type ChatPrefs } from "@/lib/whatsapp/prefs";
 import { onLaunchWithFile } from "@/lib/whatsapp/launch";
-import { hasPendingShare, registerShareTarget, takeSharedFile } from "@/lib/whatsapp/share";
+import { hasPendingShare, registerPwaWorker, takeSharedFile } from "@/lib/whatsapp/share";
+import { getStars, withToggled, saveStars } from "@/lib/whatsapp/stars";
 
 import { ChatHeader } from "./ChatHeader";
 import { ChatSidebar } from "./ChatSidebar";
@@ -52,10 +53,19 @@ export function ChatViewer() {
   /** the chat a failed open can be retried on */
   const [retry, setRetry] = useState<LibraryEntry | null>(null);
   const [canShare, setCanShare] = useState(false);
+  const [stars, setStars] = useState<Set<number>>(new Set());
+  /** the manifest shortcut lands here with ?action=open */
+  const [pickerView, setPickerView] = useState(false);
+  const [dropHover, setDropHover] = useState(false);
   const closeChatRef = useRef<(() => void) | null>(null);
   /** bumped on every open; a load whose token is stale must not touch state */
   const loadSeq = useRef(0);
   const sharePending = useRef(hasPendingShare());
+  /** the app-shortcut launch asked for the picker — nothing should auto-open */
+  const wantsPicker = useRef(
+    typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("action") === "open",
+  );
 
   const [meIndex, setMeIndex] = useState(0);
   const [dark, setDark] = useState(false);
@@ -174,6 +184,8 @@ export function ChatViewer() {
         await putChat(entry);
         setLastId(id);
         setActiveId(id);
+        setStars(getStars(id));
+        setPickerView(false);
         void refreshLibrary();
 
         // Keep our own copy so this chat reopens without a permission prompt —
@@ -212,6 +224,71 @@ export function ChatViewer() {
   useEffect(() => {
     setCanShare(typeof navigator !== "undefined" && typeof navigator.canShare === "function");
   }, []);
+
+  const toggleStar = useCallback(
+    (index: number) => {
+      setStars((prev) => {
+        const next = withToggled(prev, index);
+        saveStars(activeId, next);
+        return next;
+      });
+    },
+    [activeId],
+  );
+
+  /**
+   * Open a batch of archives: the first one on screen, the rest imported into
+   * the chat list in the background so they are one tap away.
+   */
+  const importQuietly = useCallback(async (file: File) => {
+    const client = new WaClient();
+    try {
+      const parsed = await client.load(file, { onProgress: () => undefined });
+      if (!parsed.messages.length) return false;
+      const id = entryId(file.name, file.size);
+      const stored = getPrefs(id);
+      const now = Date.now();
+      const entry: LibraryEntry = {
+        id,
+        name: file.name,
+        size: file.size,
+        addedAt: now,
+        lastOpened: now,
+        chatName: stored.chatName ?? parsed.chatName,
+        msgCount: parsed.messages.length,
+        mediaCount: parsed.mediaCount,
+      };
+      await putChat(entry);
+      if (vaultSupported) {
+        try {
+          await saveArchive(id, file);
+          await putChat({ ...entry, stored: true });
+        } catch {
+          /* no room for a copy — the entry still lists, reopen will ask */
+        }
+      }
+      return true;
+    } catch {
+      return false;
+    } finally {
+      client.destroy();
+    }
+  }, []);
+
+  const handleFiles = useCallback(
+    async (files: File[], firstHandle?: FileSystemFileHandle) => {
+      const [first, ...rest] = files;
+      if (!first) return;
+      await handleFile(first, firstHandle);
+      if (!rest.length) return;
+      let added = 0;
+      for (const file of rest) if (await importQuietly(file)) added++;
+      void refreshLibrary();
+      if (added) setNotice(`Added ${added} more chat${added > 1 ? "s" : ""} to your list.`);
+      else setError("The other files could not be read as WhatsApp exports.");
+    },
+    [handleFile, importQuietly, refreshLibrary],
+  );
 
   const openEntry = useCallback(
     async (entry: LibraryEntry) => {
@@ -276,10 +353,14 @@ export function ChatViewer() {
   }, []);
 
   const addArchive = useCallback(async () => {
-    const picked = await pickArchive();
-    if (picked) await handleFile(picked.file, picked.handle);
-    else fallbackInput.current?.click();
-  }, [handleFile]);
+    const picked = await pickArchives();
+    if (picked?.length) {
+      await handleFiles(
+        picked.map((p) => p.file),
+        picked[0]?.handle,
+      );
+    } else fallbackInput.current?.click();
+  }, [handleFiles]);
 
   // Reopen the last chat on load — but only when doing so is silent. Anything
   // that would raise a permission prompt waits for the user to tap the chat.
@@ -289,8 +370,9 @@ export function ChatViewer() {
     booted.current = true;
     void (async () => {
       const all = await refreshLibrary();
-      // A share (or an OS "open with") is already bringing its own archive.
-      if (sharePending.current || loadSeq.current > 0) return;
+      // A share (or an OS "open with") is already bringing its own archive,
+      // and the "Open an export" shortcut wants an empty picker, not a chat.
+      if (sharePending.current || wantsPicker.current || loadSeq.current > 0) return;
       const last = all.find((e) => e.id === getLastId());
       if (!last || (await entryNeedsPermission(last))) return;
       const file = await fileFromEntry(last);
@@ -308,11 +390,58 @@ export function ChatViewer() {
 
   // Installed app: an archive shared to us via the Android share sheet.
   useEffect(() => {
-    registerShareTarget();
+    registerPwaWorker();
     void takeSharedFile().then((file) => {
       if (file) void handleFile(file);
     });
   }, [handleFile]);
+
+  // The "Open an export" app shortcut lands on /?action=open.
+  useEffect(() => {
+    if (!wantsPicker.current) return;
+    setPickerView(true);
+    window.history.replaceState(null, "", window.location.pathname);
+  }, []);
+
+  // Drop a .zip anywhere in the app — not just on the welcome screen.
+  useEffect(() => {
+    let depth = 0;
+    const hasFiles = (e: DragEvent) => Array.from(e.dataTransfer?.types ?? []).includes("Files");
+    const enter = (e: DragEvent) => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+      depth++;
+      setDropHover(true);
+    };
+    const over = (e: DragEvent) => {
+      if (hasFiles(e)) e.preventDefault();
+    };
+    const leave = (e: DragEvent) => {
+      if (!hasFiles(e)) return;
+      depth = Math.max(0, depth - 1);
+      if (!depth) setDropHover(false);
+    };
+    const drop = (e: DragEvent) => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+      depth = 0;
+      setDropHover(false);
+      const files = Array.from(e.dataTransfer?.files ?? []).filter((f) =>
+        /\.(zip|txt)$/i.test(f.name),
+      );
+      if (files.length) void handleFiles(files);
+    };
+    window.addEventListener("dragenter", enter);
+    window.addEventListener("dragover", over);
+    window.addEventListener("dragleave", leave);
+    window.addEventListener("drop", drop);
+    return () => {
+      window.removeEventListener("dragenter", enter);
+      window.removeEventListener("dragover", over);
+      window.removeEventListener("dragleave", leave);
+      window.removeEventListener("drop", drop);
+    };
+  }, [handleFiles]);
 
   // debounce search input
   useEffect(() => {
@@ -489,6 +618,7 @@ export function ChatViewer() {
     setInfoOpen(false);
     setMobileChatOpen(false);
     setActiveId(null);
+    setStars(new Set());
     void refreshLibrary();
   }, [refreshLibrary, resetSearch]);
 
@@ -527,10 +657,28 @@ export function ChatViewer() {
     return () => window.removeEventListener("keydown", onKey);
   }, [chat]);
 
-  if (!entries.length && !chat) {
+  if ((!entries.length && !chat) || pickerView) {
     return (
       <>
-        <DropZone onFile={handleFile} busy={busy} phase={phase} pct={pct} error={error} />
+        <DropZone
+          onFiles={(files, handle) => void handleFiles(files, handle)}
+          busy={busy}
+          phase={phase}
+          pct={pct}
+          error={error}
+        />
+        {pickerView && (entries.length > 0 || chat) && (
+          <button
+            type="button"
+            onClick={() => {
+              wantsPicker.current = false;
+              setPickerView(false);
+            }}
+            className="fixed left-4 top-4 z-[60] cursor-pointer rounded-full bg-wa-elevated px-4 py-2 text-[13.5px] font-medium text-wa-panel-foreground shadow-[var(--wa-shadow-panel)] transition-colors hover:bg-wa-hover"
+          >
+            ← Back to chats
+          </button>
+        )}
         <PwaInstallBanner />
       </>
     );
@@ -545,10 +693,11 @@ export function ChatViewer() {
         ref={fallbackInput}
         type="file"
         accept=".zip,.txt"
+        multiple
         className="hidden"
         onChange={(event) => {
-          const file = event.target.files?.[0];
-          if (file) void handleFile(file);
+          const files = Array.from(event.target.files ?? []);
+          if (files.length) void handleFiles(files);
           event.target.value = "";
         }}
       />
@@ -610,6 +759,8 @@ export function ChatViewer() {
               client={client}
               query={debounced}
               matchSet={matchSet}
+              starredSet={stars}
+              onToggleStar={toggleStar}
               activeIndex={activeIndex}
               scrollTarget={scrollTarget}
               onOpenMedia={(msg) => openMedia(msg)}
@@ -670,6 +821,12 @@ export function ChatViewer() {
           onRenameSender={renameSender}
           onClose={() => setInfoOpen(false)}
           onOpenMedia={openMedia}
+          starred={stars}
+          onJumpTo={(index) => {
+            jumpTo(index);
+            setInfoOpen(false);
+            setMobileChatOpen(true);
+          }}
         />
       )}
 
@@ -681,6 +838,18 @@ export function ChatViewer() {
         onIndex={setLightboxIdx}
         onClose={() => setLightboxIdx(null)}
       />
+
+      {dropHover && (
+        <div className="pointer-events-none fixed inset-0 z-[70] flex items-center justify-center bg-wa-app/80 p-6 backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-3 rounded-3xl border-2 border-dashed border-wa-green bg-wa-surface px-10 py-8 text-center shadow-[var(--wa-shadow-float)]">
+            <Logo size={44} />
+            <p className="text-[16px] font-medium text-wa-panel-foreground">Drop to open</p>
+            <p className="text-[13px] text-wa-meta">
+              WhatsApp .zip or _chat.txt — several at once works too
+            </p>
+          </div>
+        </div>
+      )}
 
       {error && (
         <Toast

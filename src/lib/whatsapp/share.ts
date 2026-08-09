@@ -1,12 +1,14 @@
 /**
- * Share-target plumbing.
+ * PWA worker plumbing: registration, and the share-target hand-off.
  *
- * Android's share sheet delivers files with a POST, which only a service worker
- * can intercept. Ours caches nothing and only handles that POST, so it can't
- * serve a stale app — but it still must never run in dev or Lovable preview.
+ * Android's share sheet delivers files with a POST, which only a service
+ * worker can intercept, and the offline shell lives in the same worker
+ * (`public/app-sw.js`). The worker must never run in dev or a Lovable preview
+ * frame — there it would fight the dev server — so those environments get
+ * scrubbed clean instead.
  */
 
-const SW_URL = "/share-sw.js";
+const SW_URL = "/app-sw.js";
 const SHARE_KEY = "/__shared-file";
 
 function blocked(): boolean {
@@ -25,28 +27,28 @@ function scriptOf(reg: ServiceWorkerRegistration): string {
   return (reg.active ?? reg.waiting ?? reg.installing)?.scriptURL ?? "";
 }
 
-async function unregisterShareWorker(): Promise<void> {
-  if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
-  const regs = await navigator.serviceWorker.getRegistrations();
-  await Promise.allSettled(
-    regs.filter((r) => scriptOf(r).endsWith(SW_URL)).map((r) => r.unregister()),
-  );
-}
-
-/**
- * Nothing this app serves should ever come out of a cache: the transcript, the
- * media and the archive are all already on the device. A cache can only do
- * harm here — a shell held over from an earlier deploy asks for asset files
- * that no longer exist, and the app comes up blank. So on every start we empty
- * Cache Storage and drop any service worker that is not the share handler.
- */
-async function evictStaleWorkers(): Promise<void> {
+/** Blocked environments keep nothing: no workers of any kind, no caches. */
+async function scrubEverything(): Promise<void> {
+  try {
+    const regs = await navigator.serviceWorker.getRegistrations();
+    await Promise.allSettled(regs.map((r) => r.unregister()));
+  } catch {
+    /* ignore */
+  }
   try {
     const names = await caches.keys();
     await Promise.all(names.map((n) => caches.delete(n)));
   } catch {
-    /* no Cache Storage is exactly what we want */
+    /* ignore */
   }
+}
+
+/**
+ * Drop workers this app no longer ships (e.g. the old share-only worker).
+ * Foreign caches are not touched here — the app worker's activate step deletes
+ * every cache that is not its own, version included.
+ */
+async function evictStaleWorkers(): Promise<void> {
   try {
     const regs = await navigator.serviceWorker.getRegistrations();
     await Promise.allSettled(
@@ -57,15 +59,33 @@ async function evictStaleWorkers(): Promise<void> {
   }
 }
 
-export function registerShareTarget(): void {
+/**
+ * The worker's activate step purges foreign caches, but only when a NEW worker
+ * version activates — junk that appears while ours is already running would
+ * sit forever. This sweeps on every start instead. The name scheme is the
+ * contract with app-sw.js: everything ours is "shell-v*" or "assets-v*".
+ */
+async function purgeForeignCaches(): Promise<void> {
+  try {
+    const names = await caches.keys();
+    await Promise.all(
+      names.filter((n) => !/^(shell|assets)-v/.test(n)).map((n) => caches.delete(n)),
+    );
+  } catch {
+    /* ignore */
+  }
+}
+
+export function registerPwaWorker(): void {
   if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
-  void evictStaleWorkers();
   if (blocked()) {
-    void unregisterShareWorker();
+    void scrubEverything();
     return;
   }
+  void evictStaleWorkers();
+  void purgeForeignCaches();
   void navigator.serviceWorker.register(SW_URL, { scope: "/" }).catch(() => {
-    /* share target simply stays unavailable */
+    /* share target and offline simply stay unavailable */
   });
 }
 

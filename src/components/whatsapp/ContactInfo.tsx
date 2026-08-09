@@ -11,6 +11,7 @@ import {
   MessagesSquare,
   Pencil,
   Play,
+  Star,
   X,
 } from "lucide-react";
 import type { WaClient } from "@/lib/whatsapp/client";
@@ -198,9 +199,21 @@ interface Props {
   onRenameSender: (index: number, name: string) => void;
   onClose: () => void;
   onOpenMedia: (msg: Msg) => void;
+  /** message indices the user starred in this chat */
+  starred: Set<number>;
+  /** scroll the transcript to a message (used by the Starred tab) */
+  onJumpTo: (index: number) => void;
 }
 
-type Tab = "media" | "links" | "docs";
+const KIND_LABEL: Record<string, string> = {
+  image: "Photo",
+  video: "Video",
+  sticker: "Sticker",
+  audio: "Voice message",
+  document: "Document",
+};
+
+type Tab = "media" | "links" | "docs" | "starred";
 
 export function ContactInfo({
   chat,
@@ -214,6 +227,8 @@ export function ContactInfo({
   onRenameSender,
   onClose,
   onOpenMedia,
+  starred,
+  onJumpTo,
 }: Props) {
   const [tab, setTab] = useState<Tab>("media");
   const [shown, setShown] = useState(PAGE);
@@ -235,6 +250,11 @@ export function ContactInfo({
     }
     return { media, docs, audio, links };
   }, [chat.messages]);
+
+  const starredMsgs = useMemo(
+    () => chat.messages.filter((msg) => starred.has(msg.i)),
+    [chat.messages, starred],
+  );
 
   useEffect(() => setShown(PAGE), [tab]);
 
@@ -349,6 +369,9 @@ export function ContactInfo({
             <Chip active={tab === "docs"} onClick={() => setTab("docs")}>
               <FileText className="size-3.5" /> Docs {counts.docs}
             </Chip>
+            <Chip active={tab === "starred"} onClick={() => setTab("starred")}>
+              <Star className="size-3.5" /> Starred {starredMsgs.length}
+            </Chip>
           </div>
 
           {tab === "media" &&
@@ -432,8 +455,50 @@ export function ContactInfo({
               <p className="px-1 py-4 text-[13.5px] text-wa-meta">No documents in this chat</p>
             ))}
 
+          {tab === "starred" &&
+            (starredMsgs.length ? (
+              <ul className="divide-y divide-wa-divider">
+                {starredMsgs.slice(0, shown).map((msg) => (
+                  <li key={msg.i}>
+                    <button
+                      type="button"
+                      onClick={() => onJumpTo(msg.i)}
+                      className="flex w-full min-w-0 cursor-pointer items-start gap-3 px-1 py-2.5 text-left transition-colors hover:bg-wa-hover"
+                    >
+                      <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-wa-hover text-wa-meta">
+                        <Star className="size-4 fill-current" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-baseline gap-2 text-[12px]">
+                          <span className="min-w-0 flex-1 truncate font-medium text-wa-panel-foreground">
+                            {msg.s >= 0 ? (senders[msg.s] ?? "Unknown") : "System"}
+                          </span>
+                          <span className="shrink-0 text-wa-meta">{formatDay(msg.ts)}</span>
+                        </span>
+                        <span className="mt-0.5 line-clamp-2 text-[13.5px] leading-[18px] text-wa-meta">
+                          {msg.text ? (
+                            <Emoji text={msg.text.replace(/\s+/g, " ").slice(0, 160)} />
+                          ) : (
+                            <span className="italic">{KIND_LABEL[msg.kind] ?? "Attachment"}</span>
+                          )}
+                        </span>
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="px-1 py-4 text-[13.5px] text-wa-meta">
+                Star messages from the menu on any bubble and they collect here.
+              </p>
+            ))}
+
           {tab !== "media" &&
-            ((tab === "links" ? links.length : fileDocs.length) > shown ? (
+            ((tab === "links"
+              ? links.length
+              : tab === "starred"
+                ? starredMsgs.length
+                : fileDocs.length) > shown ? (
               <button
                 type="button"
                 onClick={() => setShown((s) => s + PAGE * 2)}

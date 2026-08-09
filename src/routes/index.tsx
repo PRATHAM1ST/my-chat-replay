@@ -1,5 +1,6 @@
 import { createFileRoute, ClientOnly } from "@tanstack/react-router";
 import { ChatViewer } from "@/components/whatsapp/ChatViewer";
+import { ChatErrorBoundary } from "@/components/whatsapp/ErrorBoundary";
 
 const title = "Chat Replay — Open a WhatsApp Export as a Real Chat";
 const description =
@@ -28,7 +29,9 @@ function Index() {
         </div>
       }
     >
-      <ChatViewer />
+      <ChatErrorBoundary>
+        <ChatViewer />
+      </ChatErrorBoundary>
     </ClientOnly>
   );
 }
