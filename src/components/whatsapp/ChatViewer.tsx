@@ -16,6 +16,7 @@ import {
 } from "@/lib/whatsapp/library";
 import { displayNames, getPrefs, savePrefs, type ChatPrefs } from "@/lib/whatsapp/prefs";
 import { onLaunchWithFile } from "@/lib/whatsapp/launch";
+import { registerShareTarget, takeSharedFile } from "@/lib/whatsapp/share";
 
 import { ChatHeader } from "./ChatHeader";
 import { ChatSidebar } from "./ChatSidebar";
