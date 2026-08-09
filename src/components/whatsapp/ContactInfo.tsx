@@ -56,16 +56,20 @@ function MediaThumb({
   const [nonce, setNonce] = useState(0);
 
   useEffect(() => {
-    if (!msg.file || !inView) return;
+    const file = msg.file;
+    if (!file || !inView) return;
     let alive = true;
+    client.retain(file);
     client
-      .media(msg.file)
+      .media(file)
       .then((result) => alive && setUrl(result.url))
       .catch(() => undefined);
     return () => {
       alive = false;
+      client.release(file);
     };
   }, [client, msg.file, inView, nonce]);
+
 
   return (
     <button
