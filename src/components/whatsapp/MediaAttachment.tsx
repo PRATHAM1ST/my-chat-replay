@@ -22,11 +22,16 @@ interface Props {
 function useMediaUrl(file: string | undefined, client: WaClient) {
   const [url, setUrl] = useState<string | null>(() => null);
   const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     if (!file) return;
     setFailed(false);
     let alive = true;
+    // Keeping the entry pinned while this row is mounted stops the LRU from
+    // revoking a url that is still on screen — that is what leaves a bubble
+    // showing an empty box.
+    client.retain(file);
     const timer = setTimeout(() => {
       client
         .media(file)
@@ -36,12 +41,23 @@ function useMediaUrl(file: string | undefined, client: WaClient) {
     return () => {
       alive = false;
       clearTimeout(timer);
+      client.release(file);
       setUrl(null);
     };
-  }, [file, client]);
+  }, [file, client, attempt]);
 
-  return { url, failed };
+  /** The url went stale (revoked or undecodable) — drop it and extract again. */
+  const retry = useCallback(() => {
+    if (!file) return;
+    client.forget(file);
+    setUrl(null);
+    setAttempt((n) => (n > 2 ? n : n + 1));
+    if (attempt > 2) setFailed(true);
+  }, [client, file, attempt]);
+
+  return { url, failed, retry };
 }
+
 
 function Missing({ label }: { label: string }) {
   return (
@@ -154,7 +170,7 @@ function VoiceNote({ url, isMe }: { url: string | null; isMe: boolean }) {
  */
 export const MediaAttachment = memo(function MediaAttachment({ msg, client, isMe, onOpen }: Props) {
   const file = msg.file;
-  const { url, failed } = useMediaUrl(file, client);
+  const { url, failed, retry } = useMediaUrl(file, client);
   const [ratio, setRatio] = useState(() => client.ratio(file));
   const label = (file?.split("/").pop() ?? msg.label ?? msg.text) || "Attachment";
 
@@ -183,6 +199,7 @@ export const MediaAttachment = memo(function MediaAttachment({ msg, client, isMe
             alt={label}
             loading="lazy"
             decoding="async"
+            onError={retry}
             className="size-full object-contain"
           />
         ) : (
@@ -210,6 +227,7 @@ export const MediaAttachment = memo(function MediaAttachment({ msg, client, isMe
               preload="metadata"
               muted
               playsInline
+              onError={retry}
               onLoadedMetadata={(e) =>
                 remember(e.currentTarget.videoWidth, e.currentTarget.videoHeight)
               }
@@ -221,12 +239,14 @@ export const MediaAttachment = memo(function MediaAttachment({ msg, client, isMe
               alt={label}
               loading="lazy"
               decoding="async"
+              onError={retry}
               onLoad={(e) => remember(e.currentTarget.naturalWidth, e.currentTarget.naturalHeight)}
               className="wa-fade-in size-full object-cover"
             />
           )
         ) : (
           <span className="wa-media-skeleton absolute inset-0 block" />
+
         )}
 
         {video && (

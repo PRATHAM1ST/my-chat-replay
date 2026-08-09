@@ -27,8 +27,15 @@ export class WaClient {
 
   // LRU of object URLs so media memory stays bounded
   private mediaCache = new Map<string, MediaResult>();
-  private mediaLimit = 80;
+  private mediaLimit = 160;
   private inflight = new Map<string, Promise<MediaResult>>();
+  /**
+   * How many mounted views are currently displaying each attachment. An entry
+   * that is on screen must never be evicted: revoking its object URL leaves the
+   * bubble showing an empty box with no way to recover.
+   */
+  private uses = new Map<string, number>();
+
   /**
    * Natural pixel size of every attachment we have decoded, so a row that
    * scrolls back into view reserves the right height immediately instead of
@@ -124,13 +131,7 @@ export class WaClient {
           return res;
         }
         this.mediaCache.set(name, res);
-        while (this.mediaCache.size > this.mediaLimit) {
-          const oldest = this.mediaCache.keys().next().value as string | undefined;
-          if (oldest === undefined) break;
-          const v = this.mediaCache.get(oldest);
-          this.mediaCache.delete(oldest);
-          if (v) URL.revokeObjectURL(v.url);
-        }
+        this.trim();
         return res;
       })
       .catch((e) => {
@@ -140,6 +141,46 @@ export class WaClient {
     this.inflight.set(name, p);
     return p;
   }
+
+  /**
+   * Drops the least recently used entries, skipping anything a mounted view is
+   * still showing — those get moved to the back of the queue instead.
+   */
+  private trim() {
+    let guard = this.mediaCache.size;
+    while (this.mediaCache.size > this.mediaLimit && guard-- > 0) {
+      const oldest = this.mediaCache.keys().next().value as string | undefined;
+      if (oldest === undefined) break;
+      const v = this.mediaCache.get(oldest);
+      this.mediaCache.delete(oldest);
+      if ((this.uses.get(oldest) ?? 0) > 0) {
+        if (v) this.mediaCache.set(oldest, v);
+        continue;
+      }
+      if (v) URL.revokeObjectURL(v.url);
+    }
+  }
+
+  /** Mark an attachment as on screen so its object URL stays valid. */
+  retain(name: string) {
+    this.uses.set(name, (this.uses.get(name) ?? 0) + 1);
+  }
+
+  release(name: string) {
+    const next = (this.uses.get(name) ?? 0) - 1;
+    if (next > 0) this.uses.set(name, next);
+    else this.uses.delete(name);
+    this.trim();
+  }
+
+  /** Forget a cached url (e.g. it failed to decode) so the next call re-extracts. */
+  forget(name: string) {
+    const v = this.mediaCache.get(name);
+    this.mediaCache.delete(name);
+    if (v) URL.revokeObjectURL(v.url);
+  }
+
+
 
   destroy() {
     if (this.dead) return;
@@ -156,6 +197,7 @@ export class WaClient {
     for (const v of this.mediaCache.values()) URL.revokeObjectURL(v.url);
     this.mediaCache.clear();
     this.ratios.clear();
+    this.uses.clear();
     this.worker.terminate();
   }
 }

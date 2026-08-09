@@ -56,16 +56,20 @@ function MediaThumb({
   const [nonce, setNonce] = useState(0);
 
   useEffect(() => {
-    if (!msg.file || !inView) return;
+    const file = msg.file;
+    if (!file || !inView) return;
     let alive = true;
+    client.retain(file);
     client
-      .media(msg.file)
+      .media(file)
       .then((result) => alive && setUrl(result.url))
       .catch(() => undefined);
     return () => {
       alive = false;
+      client.release(file);
     };
   }, [client, msg.file, inView, nonce]);
+
 
   return (
     <button
@@ -95,7 +99,12 @@ function MediaThumb({
             loading="lazy"
             decoding="async"
             // the LRU may have revoked this url while the tile was parked
-            onError={() => setNonce((n) => n + 1)}
+            onError={() => {
+              if (msg.file) client.forget(msg.file);
+              setUrl(null);
+              setNonce((n) => n + 1);
+            }}
+
             className="wa-fade-in size-full object-cover"
           />
         )
