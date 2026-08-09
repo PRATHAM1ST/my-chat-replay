@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { WaClient } from "@/lib/whatsapp/client";
 import type { Msg, ParsedChat, SearchScope } from "@/lib/whatsapp/types";
 import {
+  clearChats,
   entryId,
   fileFromEntry,
   getLastId,
@@ -23,7 +24,9 @@ import { ChatSidebar } from "./ChatSidebar";
 import { ContactInfo } from "./ContactInfo";
 import { DropZone } from "./DropZone";
 import { Lightbox } from "./Lightbox";
+import { Logo } from "./Logo";
 import { MessageList } from "./MessageList";
+
 import { NavRail } from "./NavRail";
 import { PwaInstallBanner } from "./PwaInstallBanner";
 import { SearchPanel } from "./SearchPanel";
