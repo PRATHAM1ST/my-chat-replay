@@ -515,6 +515,9 @@ export function ChatViewer() {
               activeIndex={activeIndex}
               scrollTarget={scrollTarget}
               onOpenMedia={(msg) => openMedia(msg)}
+              restore={restore}
+              onPosition={savePosition}
+
             />
           </>
         ) : (
