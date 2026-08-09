@@ -10,7 +10,10 @@
  * never the archive contents.
  */
 
+import { clearAllPrefs, clearPrefs } from "./prefs";
+
 declare global {
+
   interface FileSystemFileHandle {
     queryPermission?: (d: { mode: "read" | "readwrite" }) => Promise<PermissionState>;
     requestPermission?: (d: { mode: "read" | "readwrite" }) => Promise<PermissionState>;
