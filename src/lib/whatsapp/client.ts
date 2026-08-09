@@ -25,16 +25,17 @@ export class WaClient {
   private handlers: LoadHandlers | null = null;
   private dead = false;
 
-  // LRU of object URLs so media memory stays bounded
-  private mediaCache = new Map<string, MediaResult>();
-  private mediaLimit = 160;
-  private inflight = new Map<string, Promise<MediaResult>>();
   /**
-   * How many mounted views are currently displaying each attachment. An entry
-   * that is on screen must never be evicted: revoking its object URL leaves the
-   * bubble showing an empty box with no way to recover.
+   * Every attachment we have extracted, kept for the whole session. The archive
+   * is already on disk, so evicting buys nothing — and a revoked url is exactly
+   * what leaves a bubble showing an empty box.
    */
-  private uses = new Map<string, number>();
+  private mediaCache = new Map<string, MediaResult>();
+  private inflight = new Map<string, Promise<MediaResult>>();
+  /** Names queued for background prefetch, drained a few at a time. */
+  private queue: string[] = [];
+  private active = 0;
+
 
   /**
    * Natural pixel size of every attachment we have decoded, so a row that
