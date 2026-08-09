@@ -108,12 +108,7 @@ export class WaClient {
 
   media(name: string): Promise<MediaResult> {
     const hit = this.mediaCache.get(name);
-    if (hit) {
-      // refresh recency
-      this.mediaCache.delete(name);
-      this.mediaCache.set(name, hit);
-      return Promise.resolve(hit);
-    }
+    if (hit) return Promise.resolve(hit);
     const running = this.inflight.get(name);
     if (running) return running;
 
@@ -132,7 +127,6 @@ export class WaClient {
           return res;
         }
         this.mediaCache.set(name, res);
-        this.trim();
         return res;
       })
       .catch((e) => {
@@ -143,36 +137,41 @@ export class WaClient {
     return p;
   }
 
+  /** True once the attachment's url is resolved and ready to render. */
+  ready(name: string | undefined) {
+    return name ? this.mediaCache.get(name) : undefined;
+  }
+
   /**
-   * Drops the least recently used entries, skipping anything a mounted view is
-   * still showing — those get moved to the back of the queue instead.
+   * Extract attachments ahead of time, nearest first, so scrolling lands on
+   * pictures that are already decoded. Runs a few at a time to leave the worker
+   * responsive for whatever is actually on screen.
    */
-  private trim() {
-    let guard = this.mediaCache.size;
-    while (this.mediaCache.size > this.mediaLimit && guard-- > 0) {
-      const oldest = this.mediaCache.keys().next().value as string | undefined;
-      if (oldest === undefined) break;
-      const v = this.mediaCache.get(oldest);
-      this.mediaCache.delete(oldest);
-      if ((this.uses.get(oldest) ?? 0) > 0) {
-        if (v) this.mediaCache.set(oldest, v);
-        continue;
-      }
-      if (v) URL.revokeObjectURL(v.url);
+  prefetch(names: (string | undefined)[]) {
+    for (const n of names) {
+      if (!n || this.mediaCache.has(n) || this.inflight.has(n)) continue;
+      if (!this.queue.includes(n)) this.queue.push(n);
+    }
+    this.drain();
+  }
+
+  private drain() {
+    while (!this.dead && this.active < 3 && this.queue.length) {
+      const name = this.queue.shift()!;
+      if (this.mediaCache.has(name)) continue;
+      this.active++;
+      this.media(name)
+        .catch(() => undefined)
+        .finally(() => {
+          this.active--;
+          this.drain();
+        });
     }
   }
 
-  /** Mark an attachment as on screen so its object URL stays valid. */
-  retain(name: string) {
-    this.uses.set(name, (this.uses.get(name) ?? 0) + 1);
-  }
-
-  release(name: string) {
-    const next = (this.uses.get(name) ?? 0) - 1;
-    if (next > 0) this.uses.set(name, next);
-    else this.uses.delete(name);
-    this.trim();
-  }
+  /** No-ops kept for callers: nothing is evicted while the chat is open. */
+  retain(_name: string) {}
+  release(_name: string) {}
 
   /** Forget a cached url (e.g. it failed to decode) so the next call re-extracts. */
   forget(name: string) {
@@ -180,6 +179,7 @@ export class WaClient {
     this.mediaCache.delete(name);
     if (v) URL.revokeObjectURL(v.url);
   }
+
 
 
 
