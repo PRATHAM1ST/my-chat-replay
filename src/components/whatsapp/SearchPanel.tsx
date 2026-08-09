@@ -175,7 +175,7 @@ export function SearchPanel({
             onChange={(e) => onQuery(e.target.value)}
             onKeyDown={onKeyDown}
             placeholder="Search..."
-            className="min-w-0 flex-1 bg-transparent text-[15px] text-wa-panel-foreground caret-wa-green outline-none placeholder:text-wa-meta"
+            className="min-w-0 flex-1 bg-transparent text-[15px] text-wa-panel-foreground caret-wa-green outline-none placeholder:text-wa-meta dark:placeholder:text-[#b8bec2]"
           />
           <label
             className="grid size-9 shrink-0 cursor-pointer place-items-center rounded-full text-wa-icon transition-colors hover:bg-white/5 dark:text-white"
