@@ -9,10 +9,11 @@
  */
 import type { Msg } from "./types";
 
-/** WhatsApp caps picture bubbles at this box (measured on Android — a
- * portrait phone screenshot renders about 261x580, not letterboxed). */
+/** WhatsApp's picture box, measured on Android: artwork fills the ~262px
+ * media width, and anything taller than ~350px is centre-cropped (the app
+ * never letterboxes a tall screenshot down to a sliver). */
 export const MEDIA_MAX_W = 262;
-export const MEDIA_MAX_H = 580;
+export const MEDIA_MAX_H = 350;
 export const MEDIA_MIN_W = 140;
 /** Slot reserved before the real aspect ratio is known. */
 export const MEDIA_FALLBACK = { w: 260, h: 200 };
@@ -24,12 +25,9 @@ export interface Ratio {
 
 export function mediaBox(ratio: Ratio | undefined): Ratio {
   if (!ratio || !ratio.w || !ratio.h) return MEDIA_FALLBACK;
-  let w = Math.min(MEDIA_MAX_W, Math.max(ratio.w, MEDIA_MIN_W));
-  let h = Math.round((w * ratio.h) / ratio.w);
-  if (h > MEDIA_MAX_H) {
-    h = MEDIA_MAX_H;
-    w = Math.max(MEDIA_MIN_W, Math.round((h * ratio.w) / ratio.h));
-  }
+  const w = Math.min(MEDIA_MAX_W, Math.max(ratio.w, MEDIA_MIN_W));
+  // keep the width and crop the overflow — object-fit: cover does the rest
+  const h = Math.min(MEDIA_MAX_H, Math.round((w * ratio.h) / ratio.w));
   return { w, h };
 }
 
@@ -39,12 +37,12 @@ const NAME = 20; // group participant name line + its margin
 const PAD_Y = 10; // bubble padding, top + bottom
 const GAP = 2; // py-[1px] between bubbles
 const GROUP_GAP = 8; // extra room WhatsApp leaves when the sender changes
-const DAY_CHIP = 47;
+const DAY_CHIP = 42;
 const STICKER = 130;
 /** Average advance width of the UI font at the 14.2px bubble size. */
 const GLYPH = 7.05;
 /** Room the inline timestamp takes on the final line. */
-const STAMP_W = 62;
+const STAMP_W = 56;
 
 /**
  * How many characters fit on one line of the widest bubble at this pane width.
@@ -93,7 +91,7 @@ export function estimateRow(msg: Msg | undefined, shape: RowShape): number {
     (shape.newDay ? DAY_CHIP : 0) +
     GAP +
     (shape.quoted ? 50 : 0) +
-    (shape.reacted ? 20 : 0) +
+    (shape.reacted ? 24 : 0) +
     (shape.grouped && !shape.newDay ? GROUP_GAP : 0);
   if (msg.kind === "system") return base + 36;
 

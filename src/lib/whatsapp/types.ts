@@ -29,6 +29,8 @@ export interface ParsedChat {
    * ("WhatsApp Chat with Ann"), else the busiest sender as a fallback guess.
    */
   meIndex: number;
+  /** the clock style the exporting phone used — timestamps render to match */
+  hour12: boolean;
 }
 
 /** The chips in the search drawer, mirroring WhatsApp's own filter row. */

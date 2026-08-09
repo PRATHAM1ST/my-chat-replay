@@ -1,4 +1,14 @@
-import { ArrowLeft, ArrowLeftRight, Check, Info, MoreVertical, Search, X } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowLeftRight,
+  Check,
+  Info,
+  MoreVertical,
+  Phone,
+  Search,
+  Video,
+  X,
+} from "lucide-react";
 import {
   Avatar,
   Emoji,
@@ -46,9 +56,13 @@ export function ChatHeader({
         ? others
         : "tap here for contact info";
 
+  // Android's dark header is the app background itself, its icons pure white.
+  const iconTint = "dark:text-white";
+  const placeholder = senders.length <= 2 && subtitle === "tap here for contact info";
+
   return (
-    <header className="z-20 flex h-[60px] shrink-0 items-center gap-1 border-b border-wa-divider bg-wa-panel pl-1 pr-2 text-wa-panel-foreground sm:pl-3">
-      <IconButton onClick={onBack} aria-label="Back to chats" className="md:hidden">
+    <header className="z-20 flex h-[60px] shrink-0 items-center gap-1 border-b border-wa-divider bg-wa-panel pl-1 pr-0.5 text-wa-panel-foreground dark:border-transparent dark:bg-wa-app sm:pl-3 sm:pr-2">
+      <IconButton onClick={onBack} aria-label="Back to chats" className={`md:hidden ${iconTint}`}>
         <ArrowLeft className="size-5" />
       </IconButton>
 
@@ -57,12 +71,18 @@ export function ChatHeader({
         onClick={onOpenInfo}
         className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-lg px-1 py-1.5 text-left transition-colors hover:bg-black/[0.03] dark:hover:bg-white/[0.04]"
       >
-        <Avatar name={chatName} seed={chatName.length} />
+        <Avatar name={chatName} seed={chatName.length} className="size-9" />
         <span className="min-w-0">
           <span className="block truncate text-[17px] font-medium leading-[22px]">
             <Emoji text={chatName} />
           </span>
-          <span className="block truncate text-[13px] leading-[17px] text-wa-meta">
+          {/* the phone shows the bare name in a 1:1 chat; the hint line only
+              exists on wide screens, the way WhatsApp Web shows one */}
+          <span
+            className={`truncate text-[13px] leading-[17px] text-wa-meta ${
+              placeholder ? "hidden md:block" : "block"
+            }`}
+          >
             <Emoji
               text={senders.length > 2 ? `${senders.length} participants · ${subtitle}` : subtitle}
             />
@@ -76,15 +96,32 @@ export function ChatHeader({
             onClick={onSwap}
             aria-label="Swap sides"
             title={`Swap sides — you are ${senders[meIndex] ?? ""}`}
-            className="hidden sm:flex"
+            className={`hidden sm:flex ${iconTint}`}
           >
             <ArrowLeftRight className="size-5" />
           </IconButton>
         )}
+        {/* the call buttons every real chat carries — an export has no calls
+            to place, so they only explain themselves */}
+        <IconButton
+          aria-label="Video call — not part of an export"
+          title="Calls aren't included in a chat export"
+          className={`md:hidden ${iconTint}`}
+        >
+          <Video className="size-5" />
+        </IconButton>
+        <IconButton
+          aria-label="Voice call — not part of an export"
+          title="Calls aren't included in a chat export"
+          className={`md:hidden ${iconTint}`}
+        >
+          <Phone className="size-[18px]" />
+        </IconButton>
         <IconButton
           onClick={onToggleSearch}
           aria-label={searchOpen ? "Close search" : "Search messages"}
           active={searchOpen}
+          className={`hidden md:flex ${iconTint}`}
         >
           {searchOpen ? <X className="size-5" /> : <Search className="size-5" />}
         </IconButton>

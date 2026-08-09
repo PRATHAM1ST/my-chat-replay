@@ -22,6 +22,7 @@ import {
   saveArchive,
   vaultSupported,
 } from "@/lib/whatsapp/vault";
+import { setClockStyle } from "@/lib/whatsapp/format";
 import { displayNames, getPrefs, savePrefs, type ChatPrefs } from "@/lib/whatsapp/prefs";
 import { onLaunchWithFile } from "@/lib/whatsapp/launch";
 import { hasPendingShare, registerPwaWorker, takeSharedFile } from "@/lib/whatsapp/share";
@@ -166,6 +167,7 @@ export function ChatViewer() {
         setSearchOpen(false);
         setInfoOpen(false);
         setPrefs(stored);
+        setClockStyle(parsed.hour12);
         setChat(parsed);
         setMobileChatOpen(true);
         setMeIndex(
@@ -665,6 +667,7 @@ export function ChatViewer() {
   const closeChat = useCallback(() => {
     clientRef.current?.destroy();
     clientRef.current = null;
+    setClockStyle(undefined);
     setChat(null);
     resetSearch();
     setSearchOpen(false);

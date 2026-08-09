@@ -341,3 +341,10 @@ test("in a group named after a member, that member is still not me", () => {
   );
   assert.equal(chat.meIndex, 1); // busiest sender that is not Ann
 });
+
+test("the export's clock style is detected", () => {
+  const h24 = parseChat("10/08/2025, 14:03 - Ann: hey");
+  const h12 = parseChat("12/03/24, 2:22 pm - Ann: hey");
+  assert.equal(h24.hour12, false);
+  assert.equal(h12.hour12, true);
+});

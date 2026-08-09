@@ -1,8 +1,24 @@
+/**
+ * The open chat's clock style. The export itself says whether the phone that
+ * wrote it used a 12- or 24-hour clock, and WhatsApp renders in the device
+ * convention — so the transcript follows its source, not the viewer's locale.
+ */
+let clockHour12: boolean | undefined;
+
+export function setClockStyle(hour12: boolean | undefined) {
+  clockHour12 = hour12;
+}
+
 export function formatTime(ts: number) {
   // WhatsApp writes its meridiem lowercase — "12:04 pm" — on every platform.
   return new Date(ts)
-    .toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
-    .replace(/[AP]M\b/, (m) => m.toLowerCase());
+    .toLocaleTimeString(undefined, {
+      hour: "numeric",
+      minute: "2-digit",
+      ...(clockHour12 === undefined ? {} : { hour12: clockHour12 }),
+    })
+    .replace(/[AP]M\b/, (m) => m.toLowerCase())
+    .replace(/^24:/, "00:");
 }
 
 export function dayKey(ts: number) {

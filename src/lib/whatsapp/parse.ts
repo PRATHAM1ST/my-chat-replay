@@ -154,6 +154,7 @@ export function parseChat(raw: string, opts: ParseOptions = {}): ParsedChat {
   let curSender = -1;
   let curText: string[] = [];
   let has = false;
+  let sawMeridiem = false;
 
   const flush = () => {
     if (!has) return;
@@ -190,6 +191,7 @@ export function parseChat(raw: string, opts: ParseOptions = {}): ParsedChat {
     const min = Number(m[5]);
     const sec = m[6] ? Number(m[6]) : 0;
     const ap = m[7]?.toLowerCase();
+    if (ap) sawMeridiem = true;
     if (ap === "p" && hour < 12) hour += 12;
     if (ap === "a" && hour === 12) hour = 0;
     curTs = new Date(year, month - 1, day, hour, min, sec).getTime();
@@ -240,5 +242,6 @@ export function parseChat(raw: string, opts: ParseOptions = {}): ParsedChat {
     chatName: opts.chatName ?? (senders.length === 2 && other ? other : "Chat"),
     mediaCount,
     meIndex,
+    hour12: sawMeridiem,
   };
 }

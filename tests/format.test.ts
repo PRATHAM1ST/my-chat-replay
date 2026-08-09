@@ -19,3 +19,13 @@ test("today and yesterday keep their names", () => {
   assert.equal(formatDay(Date.now()), "Today");
   assert.equal(formatDay(Date.now() - DAY), "Yesterday");
 });
+
+test("the transcript follows the exporting phone's clock", async () => {
+  const { setClockStyle } = await import("../src/lib/whatsapp/format");
+  const afternoon = new Date(2026, 6, 23, 14, 5).getTime();
+  setClockStyle(false);
+  assert.equal(formatTime(afternoon), "14:05");
+  setClockStyle(true);
+  assert.match(formatTime(afternoon), /^2:05\spm$/);
+  setClockStyle(undefined);
+});

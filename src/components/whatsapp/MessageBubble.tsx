@@ -445,7 +445,7 @@ export const MessageBubble = memo(function MessageBubble({
   return (
     <div
       className={`flex px-[17px] py-[1px] md:px-[7%] ${isMe ? "justify-end" : "justify-start"} ${
-        reaction ? "pb-5" : ""
+        reaction ? "pb-6" : ""
       } ${spaced ? "mt-2" : ""}`}
     >
       <div
@@ -575,7 +575,13 @@ export const MessageBubble = memo(function MessageBubble({
                 Message not included in export
               </p>
             )}
-            <span className="ml-auto flex shrink-0 items-center gap-[4px] self-end pl-1.5 text-[11px] leading-[15px] text-wa-meta">
+            <span
+              className={`ml-auto flex shrink-0 items-center gap-[4px] self-end pl-1 text-[11px] leading-[15px] ${
+                /* on green bubbles the stamp is a whitened green, not the
+                   incoming side's gray — sampled off the real app */
+                isMe ? "text-wa-meta dark:text-white/60" : "text-wa-meta"
+              }`}
+            >
               {isStarred && <StarMark />}
               {msg.edited && <span>Edited</span>}
               {formatTime(msg.ts)}
@@ -585,7 +591,7 @@ export const MessageBubble = memo(function MessageBubble({
         )}
 
         {overlayStamp && sticker && (
-          <span className="mt-0.5 flex items-center justify-end gap-[3px] text-[11px] leading-[15px] text-wa-meta">
+          <span className="mt-0.5 flex items-center justify-end gap-[4px] text-[11px] leading-[15px] text-wa-meta">
             {isStarred && <StarMark />}
             {formatTime(msg.ts)}
             {isMe && <CheckCheck className="size-[15px] text-wa-tick" strokeWidth={2.2} />}
@@ -602,11 +608,11 @@ export const MessageBubble = memo(function MessageBubble({
               e.stopPropagation();
               onReact(msg.i, null);
             }}
-            className={`absolute -bottom-[16px] z-[5] flex cursor-pointer items-center rounded-full border-2 border-wa-chat bg-wa-in px-[7px] py-[2px] shadow-[var(--wa-shadow-bubble)] transition-transform hover:scale-110 ${
+            className={`absolute -bottom-[21px] z-[5] grid size-[23px] cursor-pointer place-items-center rounded-full border-2 border-wa-chat bg-wa-in shadow-[var(--wa-shadow-bubble)] transition-transform hover:scale-110 ${
               isMe ? "right-2" : "left-2"
             }`}
           >
-            <span className="wa-emoji text-[15px] leading-[19px]">{reaction}</span>
+            <span className="wa-emoji text-[13px] leading-none">{reaction}</span>
           </button>
         )}
       </div>
