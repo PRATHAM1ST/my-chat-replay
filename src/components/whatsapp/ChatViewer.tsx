@@ -523,9 +523,10 @@ export function ChatViewer() {
         ) : (
           <div className="wa-doodle flex flex-1 items-center justify-center px-6 text-center">
             <div className="relative z-10 max-w-sm">
-              <span className="mx-auto flex size-16 items-center justify-center rounded-2xl bg-wa-surface text-wa-meta shadow-[var(--wa-shadow-panel)]">
-                <MessageSquare className="size-8" />
+              <span className="mx-auto flex size-16 items-center justify-center rounded-2xl bg-wa-surface shadow-[var(--wa-shadow-panel)]">
+                <Logo size={40} />
               </span>
+
               <h2 className="mt-5 text-[26px] font-light text-wa-panel-foreground">Chat Replay</h2>
               <p className="mt-2 text-[14px] text-wa-meta">
                 Pick a chat on the left, or open another export. Everything stays on this device.
