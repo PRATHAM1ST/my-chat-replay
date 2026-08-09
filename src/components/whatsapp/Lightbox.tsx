@@ -62,6 +62,16 @@ export function Lightbox({ items, index, client, senders, meIndex, onIndex, onCl
     return () => window.removeEventListener("keydown", onKey);
   }, [index, go, onClose]);
 
+  // Hold the picture that is on screen. Arrowing along the filmstrip pulls in
+  // neighbours, and without a claim the memory trim is free to revoke the very
+  // blob the viewer is looking at — which reads as the photo vanishing.
+  useEffect(() => {
+    const file = msg?.file;
+    if (!file || !client) return;
+    client.retain(file);
+    return () => client.release(file);
+  }, [msg?.file, client]);
+
   useEffect(() => {
     setUrl(client && msg?.file ? (client.ready(msg.file)?.url ?? null) : null);
     const file = msg?.file;
@@ -205,14 +215,18 @@ function Strip({
 }) {
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => {
-    if (!msg.file || !client) return;
+    const file = msg.file;
+    if (!file || !client) return;
     let alive = true;
+    // Same claim the bubbles make: a thumbnail on screen is never reclaimable.
+    client.retain(file);
     client
-      .media(msg.file)
+      .media(file)
       .then((r) => alive && setUrl(r.url))
       .catch(() => undefined);
     return () => {
       alive = false;
+      client.release(file);
     };
   }, [msg.file, client]);
   return (

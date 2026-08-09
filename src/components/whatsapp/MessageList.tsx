@@ -1,7 +1,7 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { ChevronDown } from "lucide-react";
-import { dayKey, formatDay, nameColor } from "@/lib/whatsapp/format";
+import { dayKey, formatDay, formatTime, nameColor } from "@/lib/whatsapp/format";
 import { charsPerLine, estimateRow } from "@/lib/whatsapp/layout";
 import { buildMentionRegex } from "@/lib/whatsapp/mentions";
 import type { WaClient } from "@/lib/whatsapp/client";
@@ -164,13 +164,14 @@ export function MessageList({
   const [topDay, setTopDay] = useState<string | null>(null);
   const mentionRe = useMemo(() => buildMentionRegex(senders), [senders]);
   // Text wraps at a width the estimator can only know by measuring the pane.
-  const [cpl, setCpl] = useState(() => charsPerLine(0));
+  const [pane, setPane] = useState(0);
+  const cpl = useMemo(() => charsPerLine(pane), [pane]);
   const group = senders.length > 2;
 
   useLayoutEffect(() => {
     const el = parentRef.current;
     if (!el) return;
-    const apply = () => setCpl(charsPerLine(el.clientWidth));
+    const apply = () => setPane(el.clientWidth);
     apply();
     const ro = new ResizeObserver(apply);
     ro.observe(el);
@@ -190,9 +191,15 @@ export function MessageList({
         quoted: !!msg && replies.has(msg.i),
         reacted: !!msg && reactions.has(msg.i),
         grouped: !!msg && msg.kind !== "system" && (!prev || prev.s !== msg.s),
+        // The stamp's own width decides whether it shares the last line, so
+        // the guess has to know what the bubble will actually print.
+        outgoing: !!msg && msg.s === meIndex,
+        starred: !!msg && starredSet.has(msg.i),
+        time: msg ? formatTime(msg.ts) : undefined,
+        pane,
       });
     },
-    [messages, client, cpl, group, replies, reactions],
+    [messages, client, cpl, pane, group, replies, reactions, meIndex, starredSet],
   );
 
   const virtualizer = useVirtualizer({

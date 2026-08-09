@@ -18,9 +18,11 @@ interface Props {
  * been extracted is handed over synchronously and the bubble paints with no
  * skeleton at all.
  */
+type Failure = "absent" | "undecodable";
+
 function useMediaUrl(file: string | undefined, client: WaClient) {
   const [url, setUrl] = useState<string | null>(() => client.ready(file)?.url ?? null);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<Failure | null>(null);
   const [attempt, setAttempt] = useState(0);
 
   // Hold the attachment for as long as this bubble is mounted. Nothing the
@@ -34,7 +36,7 @@ function useMediaUrl(file: string | undefined, client: WaClient) {
 
   useEffect(() => {
     if (!file) return;
-    setFailed(false);
+    setFailed(null);
     const cached = client.ready(file);
     if (cached) {
       setUrl(cached.url);
@@ -44,35 +46,78 @@ function useMediaUrl(file: string | undefined, client: WaClient) {
     client
       .media(file)
       .then((r) => alive && setUrl(r.url))
-      .catch(() => alive && setFailed(true));
+      // The worker could not hand the bytes over at all: the entry is gone
+      // from the archive, or the archive itself is no longer readable.
+      .catch(() => alive && setFailed("absent"));
     return () => {
       alive = false;
     };
   }, [file, client, attempt]);
 
-  /** The url went stale (undecodable) — drop it and extract again. */
+  /**
+   * The element refused the url. Usually that is a blob that went stale, so
+   * the file is extracted again; after a couple of rounds it is the codec, not
+   * the url, and no amount of re-extracting will help. The last url is kept
+   * alive in that case — the bytes are perfectly good, this browser just has
+   * nothing to play them with, and handing them over to save is the one useful
+   * thing left to do.
+   */
   const retry = useCallback(() => {
     if (!file) return;
+    if (attempt > 1) {
+      setFailed("undecodable");
+      return;
+    }
     client.forget(file);
     setUrl(null);
-    setAttempt((n) => (n > 2 ? n : n + 1));
-    if (attempt > 2) setFailed(true);
+    setAttempt((n) => n + 1);
   }, [client, file, attempt]);
 
   return { url, failed, retry };
 }
 
-function Missing({ label }: { label: string }) {
+/**
+ * Stand-in for an attachment the bubble cannot paint.
+ *
+ * Two very different things end up here and the reader deserves to know which:
+ * a file the export never carried, and a file that is right there in the
+ * archive but that this browser will not decode — a .mkv, an .amr voice note,
+ * a HEIC photo. Calling the second one "not in export" sends people hunting
+ * for a file they already have, so it gets its own wording and, since the
+ * bytes exist, a way to open it in something that can.
+ */
+function Missing({ label, url }: { label: string; url?: string | null }) {
   // fixed width: the bubble (and a caption wrapping beneath) must never take
   // their width from this chip's text
+  const cls =
+    "flex w-[236px] max-w-full items-center gap-2 rounded-[6px] bg-black/[0.04] px-3 py-3 text-[13px] text-wa-meta dark:bg-white/[0.06]";
+  if (!url)
+    return (
+      <div className={cls}>
+        <ImageOff className="size-4 shrink-0" />
+        <span className="min-w-0 flex-1 truncate" title={label}>
+          {label}
+        </span>
+        <span className="shrink-0 text-[11px] opacity-70">not in export</span>
+      </div>
+    );
   return (
-    <div className="flex w-[236px] max-w-full items-center gap-2 rounded-[6px] bg-black/[0.04] px-3 py-3 text-[13px] text-wa-meta dark:bg-white/[0.06]">
-      <ImageOff className="size-4 shrink-0" />
-      <span className="min-w-0 flex-1 truncate" title={label}>
-        {label}
+    <a
+      href={url}
+      download={label}
+      className={`${cls} transition-colors hover:bg-black/[0.07] dark:hover:bg-white/[0.1]`}
+    >
+      <FileText className="size-4 shrink-0" />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate" title={label}>
+          {label}
+        </span>
+        <span className="mt-0.5 block text-[11px] opacity-70">
+          this browser can&rsquo;t play it — save it
+        </span>
       </span>
-      <span className="shrink-0 text-[11px] opacity-70">not in export</span>
-    </div>
+      <Download className="size-4 shrink-0" />
+    </a>
   );
 }
 
@@ -188,7 +233,8 @@ export const MediaAttachment = memo(function MediaAttachment({ msg, client, isMe
     [client, file],
   );
 
-  if (!file || failed) return <Missing label={label} />;
+  if (!file) return <Missing label={label} />;
+  if (failed) return <Missing label={label} url={failed === "undecodable" ? url : null} />;
 
   if (msg.kind === "sticker") {
     return (

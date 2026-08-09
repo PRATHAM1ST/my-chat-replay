@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { formatDay, formatTime } from "@/lib/whatsapp/format";
+import { stampWidth } from "@/lib/whatsapp/layout";
 import type { WaClient } from "@/lib/whatsapp/client";
 import type { Msg, MsgKind } from "@/lib/whatsapp/types";
 import { splitMentions } from "@/lib/whatsapp/mentions";
@@ -451,6 +452,27 @@ export const MessageBubble = memo(function MessageBubble({
   /* Only stickers render without a bubble; emoji-only messages keep theirs. */
   const bare = sticker && !msg.text;
 
+  const time = formatTime(msg.ts);
+  const stampGap = stampWidth({
+    time,
+    ticks: isMe,
+    starred: isStarred,
+    edited: msg.edited,
+  });
+  /* on green bubbles the stamp is a whitened green, not the incoming side's
+     gray — sampled off the real app */
+  const stampBits = (
+    <>
+      {isStarred && <StarMark />}
+      {msg.edited && <span>Edited</span>}
+      {time}
+      {isMe && <CheckCheck className="size-[15px] text-wa-tick" strokeWidth={2.2} />}
+    </>
+  );
+  const stampClass = `flex shrink-0 items-center gap-[4px] text-[11px] leading-[15px] ${
+    isMe ? "text-wa-meta-out" : "text-wa-meta"
+  }`;
+
   return (
     <div
       className={`flex px-[17px] py-[1px] md:px-[7%] ${isMe ? "justify-end" : "justify-start"} ${
@@ -550,12 +572,7 @@ export const MessageBubble = memo(function MessageBubble({
             <MediaAttachment msg={msg} client={client} isMe={isMe} onOpen={onOpenMedia} />
             {overlayStamp && !sticker && (
               <span className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-end bg-gradient-to-t from-black/45 to-transparent px-2 pb-1 pt-6 text-[11px] leading-[15px] text-white">
-                <span className="flex items-center gap-[3px]">
-                  {isStarred && <StarMark />}
-                  {msg.edited && <span className="opacity-90">Edited</span>}
-                  {formatTime(msg.ts)}
-                  {isMe && <CheckCheck className="size-[15px] text-wa-tick" strokeWidth={2.2} />}
-                </span>
+                <span className="flex items-center gap-[4px]">{stampBits}</span>
               </span>
             )}
           </div>
@@ -563,52 +580,63 @@ export const MessageBubble = memo(function MessageBubble({
 
         {!overlayStamp && (
           <div
-            className={`flex flex-wrap items-end justify-end gap-x-2 ${
+            className={`relative ${
               /* the caption wraps at the picture's width — it never widens the
                  bubble past the artwork, exactly like the app */
               mediaCard && msg.text ? "w-0 min-w-full px-1.5 pb-[3px] pt-1" : ""
             }`}
           >
-            {msg.kind === "call" ? (
-              <CallCard text={msg.text} />
-            ) : msg.text && isDeletedMessage(msg.text) ? (
-              <p className="flex min-w-0 items-center gap-1.5 text-[14.2px] italic leading-[19px] text-wa-meta">
-                <Ban className="size-[15px] shrink-0" /> {msg.text}
-              </p>
-            ) : msg.text ? (
-              <p
-                className={`wa-text min-w-0 whitespace-pre-wrap break-words text-[14.2px] leading-[19px] ${
-                  big === "lg" ? "wa-emoji-only" : big === "md" ? "wa-emoji-only-md" : ""
-                }`}
-              >
-                <Body text={msg.text} query={isMatch ? query : ""} mentionRe={mentionRe} />
-              </p>
-            ) : hasMedia ? null : (
-              <p className="text-[14.2px] italic leading-[19px] text-wa-meta">
-                Message not included in export
-              </p>
+            {msg.text && !isDeletedMessage(msg.text) ? (
+              <>
+                <p
+                  className={`wa-text min-w-0 whitespace-pre-wrap break-words text-[14.2px] leading-[19px] ${
+                    big === "lg" ? "wa-emoji-only" : big === "md" ? "wa-emoji-only-md" : ""
+                  }`}
+                >
+                  <Body text={msg.text} query={isMatch ? query : ""} mentionRe={mentionRe} />
+                  {/* The room the clock will be painted into. It rides at the
+                      end of the text, so it shares the last line whenever that
+                      line can spare the width and drops to one of its own when
+                      it cannot — which is what keeps a bubble hugging its words
+                      instead of stretching itself to make space for four
+                      digits and then leaving the gap empty. */}
+                  <span
+                    aria-hidden="true"
+                    className="wa-stamp-gap"
+                    style={{ width: `${stampGap}px` }}
+                  />
+                </p>
+                {/* into the run reserved above — a caption's padding is on the
+                    positioned box, so the corner has to step inside it */}
+                <span
+                  className={`${stampClass} absolute ${
+                    mediaCard ? "bottom-[3px] right-1.5" : "bottom-0 right-0"
+                  }`}
+                >
+                  {stampBits}
+                </span>
+              </>
+            ) : (
+              <div className="flex items-end justify-end gap-x-2">
+                {msg.kind === "call" ? (
+                  <CallCard text={msg.text} />
+                ) : msg.text ? (
+                  <p className="flex min-w-0 items-center gap-1.5 text-[14.2px] italic leading-[19px] text-wa-meta">
+                    <Ban className="size-[15px] shrink-0" /> {msg.text}
+                  </p>
+                ) : hasMedia ? null : (
+                  <p className="text-[14.2px] italic leading-[19px] text-wa-meta">
+                    Message not included in export
+                  </p>
+                )}
+                <span className={`${stampClass} ml-auto self-end pl-1`}>{stampBits}</span>
+              </div>
             )}
-            <span
-              className={`ml-auto flex shrink-0 items-center gap-[4px] self-end pl-1 text-[11px] leading-[15px] ${
-                /* on green bubbles the stamp is a whitened green, not the
-                   incoming side's gray — sampled off the real app */
-                isMe ? "text-wa-meta-out" : "text-wa-meta"
-              }`}
-            >
-              {isStarred && <StarMark />}
-              {msg.edited && <span>Edited</span>}
-              {formatTime(msg.ts)}
-              {isMe && <CheckCheck className="size-[15px] text-wa-tick" strokeWidth={2.2} />}
-            </span>
           </div>
         )}
 
         {overlayStamp && sticker && (
-          <span className="mt-0.5 flex items-center justify-end gap-[4px] text-[11px] leading-[15px] text-wa-meta">
-            {isStarred && <StarMark />}
-            {formatTime(msg.ts)}
-            {isMe && <CheckCheck className="size-[15px] text-wa-tick" strokeWidth={2.2} />}
-          </span>
+          <span className={`${stampClass} mt-0.5 justify-end text-wa-meta`}>{stampBits}</span>
         )}
 
         {/* The reaction pill hangs off the bubble's bottom corner, ringed in

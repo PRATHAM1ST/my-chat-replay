@@ -189,6 +189,21 @@ test("attachments are matched by base name inside folders", () => {
   assert.equal(chat.messages[0]?.file, "WhatsApp Chat with Ann/IMG-20240312-WA0001.jpg");
 });
 
+test("attachments match across case and unicode form", () => {
+  // Apple's filesystem hands out decomposed names, so a transcript written
+  // composed carries a string that looks the same and compares different.
+  const chat = parseChat(
+    [
+      "12/03/2024, 09:00 - Ann: Café.jpg (file attached)",
+      "12/03/2024, 09:01 - Ann: HOLIDAY.JPG (file attached)",
+    ].join("\n"),
+    // "Cafe" + a combining acute: the decomposed form an iPhone export carries
+    { fileNames: ["Cafe\u0301.jpg", "holiday.jpg"] },
+  );
+  assert.equal(chat.messages[0]?.file, "Cafe\u0301.jpg");
+  assert.equal(chat.messages[1]?.file, "holiday.jpg");
+});
+
 test("omitted media keeps its kind", () => {
   const chat = parseChat(
     [

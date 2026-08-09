@@ -469,6 +469,19 @@
   clip-path: path("M0 0 L0 13 C0.4 8 3.5 2.8 8 0 Z");
 }
 
+/* WhatsApp reserves the clock's width at the end of a message's last line and
+ * paints the clock into the bubble's bottom-right corner. That is what lets a
+ * short message keep its stamp inline while a long one pushes it onto a line
+ * of its own — and, because the reserved run is part of the text, it is also
+ * what keeps the bubble the width of its words rather than stretching to the
+ * cap and leaving a blank strip beside them. `vertical-align: bottom` keeps
+ * the spacer from lifting the line box it lands on. */
+.wa-stamp-gap {
+  display: inline-block;
+  height: 1px;
+  vertical-align: bottom;
+}
+
 /* Quote-card names: the accent colours the bar; in dark the name itself is
  * near-white with only a tint of the accent, exactly like the current app. */
 .wa-quote-name {

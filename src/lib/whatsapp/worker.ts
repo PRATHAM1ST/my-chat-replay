@@ -38,6 +38,10 @@ function chatNameFromTxt(name: string) {
 function reset() {
   mediaCache.clear();
   mediaCacheBytes = 0;
+  // The previous chat's archive has to go with it. Leaving it behind lets a
+  // bare .txt opened afterwards resolve attachments out of the chat before it
+  // — the same file names recur across exports, so it would even find some.
+  archive = null;
 }
 
 async function load(file: File) {

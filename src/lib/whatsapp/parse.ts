@@ -77,16 +77,28 @@ export interface ParseOptions {
   onProgress?: (pct: number) => void;
 }
 
+/**
+ * The key an attachment is looked up under.
+ *
+ * Only the base name matters: exports name a file `IMG-0002.jpg` whether the
+ * archive keeps it at the root or under a folder named after the chat. Case is
+ * dropped because Windows archives round-trip it freely, and the name is
+ * normalised because a phone that writes its file names decomposed (é as e + ´,
+ * which is what Apple's filesystem hands out) and its transcript composed
+ * produces two strings that look identical and never match.
+ */
+function fileKey(name: string): string {
+  const base = name.split(/[\\/]/).pop() ?? name;
+  return base.normalize("NFC").toLowerCase();
+}
+
 export function parseChat(raw: string, opts: ParseOptions = {}): ParsedChat {
   const lines = raw.split(/\r?\n/);
   const dayFirst = detectDayFirst(lines);
 
-  // lowercase base-name -> real archive path
+  // base-name key -> real archive path
   const lookup = new Map<string, string>();
-  for (const n of opts.fileNames ?? []) {
-    const base = n.split("/").pop() ?? n;
-    lookup.set(base.toLowerCase(), n);
-  }
+  for (const n of opts.fileNames ?? []) lookup.set(fileKey(n), n);
 
   const messages: Msg[] = [];
   const senders: string[] = [];
@@ -124,7 +136,7 @@ export function parseChat(raw: string, opts: ParseOptions = {}): ParsedChat {
 
     if (rawName) {
       const name = rawName.trim();
-      const resolved = lookup.get((name.split("/").pop() ?? name).toLowerCase());
+      const resolved = lookup.get(fileKey(name));
       file = resolved;
       kind = kindFromFileName(name);
       body = ios
@@ -141,9 +153,7 @@ export function parseChat(raw: string, opts: ParseOptions = {}): ParsedChat {
       if (/omitted/i.test(first)) {
         const rest = nl === -1 ? "" : body.slice(nl + 1).trim();
         const named = rest && rest.length <= 120 && !rest.includes("\n") ? rest : undefined;
-        const resolved = named
-          ? lookup.get((named.split("/").pop() ?? named).toLowerCase())
-          : undefined;
+        const resolved = named ? lookup.get(fileKey(named)) : undefined;
         kind = omittedKind(first) ?? (named ? kindFromFileName(named) : "document");
         if (resolved) file = resolved;
         else label = named ?? first.replace(/[<>]/g, "");
