@@ -180,15 +180,7 @@ export class WaClient {
     if (v) URL.revokeObjectURL(v.url);
   }
 
-        return res;
-      })
-      .catch((e) => {
-        this.inflight.delete(name);
-        throw e;
-      });
-    this.inflight.set(name, p);
-    return p;
-  }
+
 
   destroy() {
     if (this.dead) return;
