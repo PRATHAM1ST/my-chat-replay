@@ -131,13 +131,55 @@ export class WaClient {
           return res;
         }
         this.mediaCache.set(name, res);
-        while (this.mediaCache.size > this.mediaLimit) {
-          const oldest = this.mediaCache.keys().next().value as string | undefined;
-          if (oldest === undefined) break;
-          const v = this.mediaCache.get(oldest);
-          this.mediaCache.delete(oldest);
-          if (v) URL.revokeObjectURL(v.url);
-        }
+        this.trim();
+        return res;
+      })
+      .catch((e) => {
+        this.inflight.delete(name);
+        throw e;
+      });
+    this.inflight.set(name, p);
+    return p;
+  }
+
+  /**
+   * Drops the least recently used entries, skipping anything a mounted view is
+   * still showing — those get moved to the back of the queue instead.
+   */
+  private trim() {
+    let guard = this.mediaCache.size;
+    while (this.mediaCache.size > this.mediaLimit && guard-- > 0) {
+      const oldest = this.mediaCache.keys().next().value as string | undefined;
+      if (oldest === undefined) break;
+      const v = this.mediaCache.get(oldest);
+      this.mediaCache.delete(oldest);
+      if ((this.uses.get(oldest) ?? 0) > 0) {
+        if (v) this.mediaCache.set(oldest, v);
+        continue;
+      }
+      if (v) URL.revokeObjectURL(v.url);
+    }
+  }
+
+  /** Mark an attachment as on screen so its object URL stays valid. */
+  retain(name: string) {
+    this.uses.set(name, (this.uses.get(name) ?? 0) + 1);
+  }
+
+  release(name: string) {
+    const next = (this.uses.get(name) ?? 0) - 1;
+    if (next > 0) this.uses.set(name, next);
+    else this.uses.delete(name);
+    this.trim();
+  }
+
+  /** Forget a cached url (e.g. it failed to decode) so the next call re-extracts. */
+  forget(name: string) {
+    const v = this.mediaCache.get(name);
+    this.mediaCache.delete(name);
+    if (v) URL.revokeObjectURL(v.url);
+  }
+
         return res;
       })
       .catch((e) => {
