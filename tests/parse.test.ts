@@ -348,3 +348,22 @@ test("the export's clock style is detected", () => {
   assert.equal(h24.hour12, false);
   assert.equal(h12.hour12, true);
 });
+
+test("stray spaces around message lines are trimmed away", () => {
+  const chat = parseChat(
+    [
+      "12/03/2024, 09:00 - Ann:    padded on both sides   ",
+      "12/03/2024, 09:01 - Ann: first line   ",
+      "   second line\t",
+      "",
+      "  third after a blank  ",
+      "12/03/2024, 09:02 - Ben: IMG-1.jpg (file attached)",
+      "   caption with pads   ",
+    ].join("\n"),
+    { fileNames: ["IMG-1.jpg"] },
+  );
+  assert.equal(chat.messages[0]?.text, "padded on both sides");
+  assert.equal(chat.messages[1]?.text, "first line\nsecond line\n\nthird after a blank");
+  assert.equal(chat.messages[2]?.kind, "image");
+  assert.equal(chat.messages[2]?.text, "caption with pads");
+});

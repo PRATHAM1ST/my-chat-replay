@@ -32,6 +32,20 @@ function clean(s: string) {
   return s.replace(/[\u200e\u200f\u202a-\u202e\ufeff]/g, "");
 }
 
+/**
+ * Exports carry stray spaces around message lines \u2014 copied text, trailing
+ * pads before a newline \u2014 and the bubble renders every one of them under
+ * `white-space: pre-wrap`. Each line is trimmed on both sides so a bubble
+ * hugs what was actually said.
+ */
+function tidy(s: string) {
+  return s
+    .split("\n")
+    .map((line) => line.trim())
+    .join("\n")
+    .trim();
+}
+
 function detectDayFirst(lines: string[]): boolean {
   for (let i = 0; i < lines.length; i++) {
     const m = HEAD.exec(clean(lines[i] ?? ""));
@@ -158,7 +172,7 @@ export function parseChat(raw: string, opts: ParseOptions = {}): ParsedChat {
 
   const flush = () => {
     if (!has) return;
-    pushLine(curText.join("\n").trim(), curTs, curSender);
+    pushLine(tidy(curText.join("\n")), curTs, curSender);
     has = false;
     curText = [];
   };
