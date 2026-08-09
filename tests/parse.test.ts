@@ -286,3 +286,17 @@ test("timestamps are non-decreasing for an ordinary export", () => {
   const ts = chat.messages.map((m) => m.ts);
   assert.ok(ts[0]! < ts[1]! && ts[1]! < ts[2]!);
 });
+
+test("call events become call messages; sentences about calls do not", () => {
+  const chat = parseChat(
+    [
+      "12/03/2024, 09:00 - Ann: Missed voice call",
+      "12/03/2024, 09:01 - Ann: Video call, 12 secs",
+      "12/03/2024, 09:02 - Ann: video call me later",
+    ].join("\n"),
+  );
+  assert.deepEqual(
+    chat.messages.map((m) => m.kind),
+    ["call", "call", "text"],
+  );
+});

@@ -211,6 +211,7 @@ const KIND_LABEL: Record<string, string> = {
   sticker: "Sticker",
   audio: "Voice message",
   document: "Document",
+  call: "Call",
 };
 
 type Tab = "media" | "links" | "docs" | "starred";

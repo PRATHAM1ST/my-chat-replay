@@ -1,9 +1,20 @@
 import { memo, useCallback, useState } from "react";
-import { CheckCheck, ChevronDown, Copy, Share2, Star, StarOff } from "lucide-react";
+import {
+  Ban,
+  CheckCheck,
+  ChevronDown,
+  Copy,
+  Phone,
+  Share2,
+  Star,
+  StarOff,
+  Video,
+} from "lucide-react";
 import { formatDay, formatTime } from "@/lib/whatsapp/format";
 import type { WaClient } from "@/lib/whatsapp/client";
 import type { Msg } from "@/lib/whatsapp/types";
 import { splitMentions } from "@/lib/whatsapp/mentions";
+import { isDeletedMessage, parseCallLine, splitFormatRuns } from "@/lib/whatsapp/richtext";
 import { MediaAttachment } from "./MediaAttachment";
 import { useLongPress } from "./useLongPress";
 import { Emoji, Menu, MenuContent, MenuItem, MenuTrigger } from "./ui";
@@ -78,6 +89,50 @@ function WithMentions({
   );
 }
 
+/** One styled run of text; mono runs render raw, others get mentions too. */
+function Formatted({
+  text,
+  query,
+  mentionRe,
+}: {
+  text: string;
+  query: string;
+  mentionRe: RegExp | null;
+}) {
+  const runs = splitFormatRuns(text);
+  if (runs.length === 1 && !runs[0]?.bold && !runs[0]?.italic && !runs[0]?.strike && !runs[0]?.mono)
+    return <WithMentions text={text} query={query} mentionRe={mentionRe} />;
+  return (
+    <>
+      {runs.map((run, i) => {
+        const cls =
+          [
+            run.bold ? "font-semibold" : "",
+            run.italic ? "italic" : "",
+            run.strike ? "line-through" : "",
+            run.mono
+              ? "rounded bg-black/[0.06] px-1 font-mono text-[13px] dark:bg-white/[0.08]"
+              : "",
+          ]
+            .filter(Boolean)
+            .join(" ") || undefined;
+        const inner = run.mono ? (
+          <Highlighted text={run.text} query={query} />
+        ) : (
+          <WithMentions text={run.text} query={query} mentionRe={mentionRe} />
+        );
+        return cls ? (
+          <span key={i} className={cls}>
+            {inner}
+          </span>
+        ) : (
+          <span key={i}>{inner}</span>
+        );
+      })}
+    </>
+  );
+}
+
 /** Message text with clickable links, coloured mentions and search marks. */
 function Body({
   text,
@@ -95,7 +150,7 @@ function Body({
     const at = m.index ?? 0;
     if (at > last)
       out.push(
-        <WithMentions key={k++} text={text.slice(last, at)} query={query} mentionRe={mentionRe} />,
+        <Formatted key={k++} text={text.slice(last, at)} query={query} mentionRe={mentionRe} />,
       );
     const raw = m[0];
     out.push(
@@ -112,9 +167,7 @@ function Body({
     last = at + raw.length;
   }
   if (last < text.length)
-    out.push(
-      <WithMentions key={k++} text={text.slice(last)} query={query} mentionRe={mentionRe} />,
-    );
+    out.push(<Formatted key={k++} text={text.slice(last)} query={query} mentionRe={mentionRe} />);
   return <>{out}</>;
 }
 
@@ -130,6 +183,33 @@ function emojiScale(text: string): "lg" | "md" | null {
 }
 
 const MEDIA_CARD = new Set(["image", "video", "sticker"]);
+
+/** Call events, drawn as the app draws them: icon disc, label, detail. */
+function CallCard({ text }: { text: string }) {
+  const call = parseCallLine(text) ?? { video: false, missed: false, label: text, sub: null };
+  const Icon = call.video ? Video : Phone;
+  return (
+    <span className="flex min-w-0 items-center gap-3 py-1 pr-1">
+      <span
+        className={`grid size-10 shrink-0 place-items-center rounded-full ${
+          call.missed
+            ? "bg-destructive/12 text-destructive"
+            : "bg-black/[0.07] text-wa-icon dark:bg-white/[0.1]"
+        }`}
+      >
+        <Icon className="size-5" />
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate text-[14.5px] font-medium leading-[19px]">
+          {call.label}
+        </span>
+        <span className="block text-[12px] leading-[16px] text-wa-meta">
+          {call.sub ?? (call.missed ? "No answer" : "Call ended")}
+        </span>
+      </span>
+    </span>
+  );
+}
 
 /** The tiny star WhatsApp shows beside the time of a starred message. */
 function StarMark() {
@@ -175,7 +255,7 @@ export const MessageBubble = memo(function MessageBubble({
     );
   }
 
-  const hasMedia = msg.kind !== "text";
+  const hasMedia = msg.kind !== "text" && msg.kind !== "call";
   const big = hasMedia ? null : emojiScale(msg.text);
   const sticker = msg.kind === "sticker";
   const mediaCard = MEDIA_CARD.has(msg.kind);
@@ -274,7 +354,13 @@ export const MessageBubble = memo(function MessageBubble({
               mediaCard && msg.text ? "px-1.5 pb-[3px] pt-1" : ""
             }`}
           >
-            {msg.text ? (
+            {msg.kind === "call" ? (
+              <CallCard text={msg.text} />
+            ) : msg.text && isDeletedMessage(msg.text) ? (
+              <p className="flex min-w-0 items-center gap-1.5 text-[14.2px] italic leading-[19px] text-wa-meta">
+                <Ban className="size-[15px] shrink-0" /> {msg.text}
+              </p>
+            ) : msg.text ? (
               <p
                 className={`wa-text min-w-0 whitespace-pre-wrap break-words text-[14.2px] leading-[19px] ${
                   big === "lg" ? "wa-emoji-only" : big === "md" ? "wa-emoji-only-md" : ""

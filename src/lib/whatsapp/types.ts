@@ -1,4 +1,5 @@
-export type MsgKind = "text" | "image" | "video" | "audio" | "sticker" | "document" | "system";
+export type MsgKind =
+  "text" | "image" | "video" | "audio" | "sticker" | "document" | "call" | "system";
 
 export interface Msg {
   /** index in the full message array */

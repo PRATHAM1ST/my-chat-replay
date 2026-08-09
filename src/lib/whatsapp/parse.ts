@@ -1,3 +1,4 @@
+import { parseCallLine } from "./richtext";
 import { kindFromFileName, type Msg, type MsgKind, type ParsedChat } from "./types";
 
 // Matches both iOS "[12/03/2024, 14:22:01] Name: text" and
@@ -90,6 +91,13 @@ export function parseChat(raw: string, opts: ParseOptions = {}): ParsedChat {
     if (editedMark.test(body)) {
       edited = true;
       body = body.replace(editedMark, "");
+    }
+
+    // Call events export as their own one-line messages ("Missed voice call",
+    // "Video call, 12 secs") and render as cards, the way the app shows them.
+    if (sender >= 0 && !body.includes("\n") && parseCallLine(body)) {
+      messages.push({ i: messages.length, ts, s: sender, text: body.trim(), kind: "call" });
+      return;
     }
 
     const ios = ATTACHED_IOS.exec(body);

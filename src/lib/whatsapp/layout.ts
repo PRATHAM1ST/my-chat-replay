@@ -98,6 +98,8 @@ export function estimateRow(msg: Msg | undefined, shape: RowShape): number {
       return base + name + STICKER + STAMP + 6;
     case "audio":
       return base + name + 48 + PAD_Y + STAMP;
+    case "call":
+      return base + name + 48 + PAD_Y + STAMP;
     case "document":
       return base + name + 52 + PAD_Y + STAMP;
     default: {

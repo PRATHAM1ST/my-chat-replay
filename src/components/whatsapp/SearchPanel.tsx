@@ -60,6 +60,7 @@ const KIND_LABEL: Record<string, string> = {
   sticker: "Sticker",
   audio: "Audio",
   document: "Document",
+  call: "Call",
 };
 
 /** One line of context around the hit, the way WhatsApp previews results. */
