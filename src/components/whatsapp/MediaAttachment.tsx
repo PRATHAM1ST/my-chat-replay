@@ -247,7 +247,6 @@ export const MediaAttachment = memo(function MediaAttachment({ msg, client, isMe
         ) : (
           <span className="wa-media-skeleton absolute inset-0 block" />
 
-          <span className="wa-media-skeleton absolute inset-0 block" />
         )}
 
         {video && (
