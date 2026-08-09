@@ -7,6 +7,12 @@ import type { WaClient } from "@/lib/whatsapp/client";
 import type { Msg } from "@/lib/whatsapp/types";
 import { MessageBubble } from "./MessageBubble";
 
+export interface ScrollPosition {
+  index: number;
+  offset: number;
+  atBottom: boolean;
+}
+
 interface Props {
   messages: Msg[];
   senders: string[];
@@ -18,7 +24,12 @@ interface Props {
   /** {index, nonce} — index is a position inside `messages` */
   scrollTarget: { index: number; nonce: number } | null;
   onOpenMedia: (msg: Msg, url: string) => void;
+  /** where this chat was left off last time, if anywhere */
+  restore?: ScrollPosition | null;
+  /** debounced report of the current reading position */
+  onPosition?: (pos: ScrollPosition) => void;
 }
+
 
 interface RowProps {
   msg: Msg;
