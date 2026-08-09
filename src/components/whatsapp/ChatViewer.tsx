@@ -284,12 +284,42 @@ export function ChatViewer() {
     [mediaMsgs],
   );
 
+  // Prefs are also written outside React (scroll position, every ~400ms while
+  // reading), so keep a mirror the writer can merge into without re-rendering.
+  const prefsRef = useRef<ChatPrefs>({});
+  prefsRef.current = prefs;
+
   const persist = useCallback(
     (patch: ChatPrefs) => {
       setPrefs((prev) => savePrefs(activeId, { ...prev, ...patch }));
     },
     [activeId],
   );
+
+  const savePosition = useCallback(
+    (pos: { index: number; offset: number; atBottom: boolean }) => {
+      if (!activeId) return;
+      const next = {
+        ...prefsRef.current,
+        scrollIndex: pos.index,
+        scrollOffset: pos.offset,
+        atBottom: pos.atBottom,
+      };
+      prefsRef.current = next;
+      savePrefs(activeId, next);
+    },
+    [activeId],
+  );
+
+  const restore = useMemo(
+    () => ({
+      index: prefs.scrollIndex ?? 0,
+      offset: prefs.scrollOffset ?? 0,
+      atBottom: prefs.atBottom ?? prefs.scrollIndex === undefined,
+    }),
+    [prefs.scrollIndex, prefs.scrollOffset, prefs.atBottom],
+  );
+
 
   const changeMe = useCallback(
     (i: number) => {
