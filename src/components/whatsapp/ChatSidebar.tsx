@@ -9,8 +9,19 @@ import {
   Sun,
   Trash2,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { formatBytes, formatListStamp } from "@/lib/whatsapp/format";
 import type { LibraryEntry } from "@/lib/whatsapp/library";
+import { Logo } from "./Logo";
 import {
   Avatar,
   Chip,
@@ -32,9 +43,11 @@ interface Props {
   onAdd: () => void;
   onOpen: (entry: LibraryEntry) => void;
   onRemove: (entry: LibraryEntry) => void;
+  onClearAll: () => void;
   dark: boolean;
   onToggleDark: () => void;
 }
+
 
 type Filter = "all" | "media" | "locked";
 
