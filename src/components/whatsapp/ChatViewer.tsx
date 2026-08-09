@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { MessageSquare } from "lucide-react";
+
 import { WaClient } from "@/lib/whatsapp/client";
 import type { Msg, ParsedChat, SearchScope } from "@/lib/whatsapp/types";
 import {
