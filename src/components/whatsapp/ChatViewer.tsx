@@ -177,11 +177,19 @@ export function ChatViewer() {
         );
         setBusy(false);
 
-        // Say it out loud when pictures can never load: a bare .txt export
-        // references its attachments but does not contain them.
+        // Say it out loud when pictures can never load, because a wall of grey
+        // "not in export" chips reads as the app being broken. Two ways to get
+        // there: a bare .txt, which carries no attachments at all, and a real
+        // .zip that WhatsApp stopped filling once the export hit its size
+        // ceiling — the transcript names every file either way.
         if (parsed.mediaCount > 0 && !client.archivePresent) {
           setNotice(
             "This export is text-only, so its photos aren't inside. Export the chat again with media (as a .zip) to see them.",
+          );
+        } else if (parsed.missingCount > 0) {
+          const n = parsed.missingCount;
+          setNotice(
+            `${n.toLocaleString()} ${n === 1 ? "attachment isn't" : "attachments aren't"} inside this .zip — WhatsApp stops adding media once an export gets large, and writes the transcript anyway. Exporting a shorter stretch of the chat brings ${n === 1 ? "it" : "them"} along.`,
           );
         }
 

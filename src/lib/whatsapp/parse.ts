@@ -105,6 +105,7 @@ export function parseChat(raw: string, opts: ParseOptions = {}): ParsedChat {
   const counts: number[] = [];
   const senderIdx = new Map<string, number>();
   let mediaCount = 0;
+  let missingCount = 0;
 
   const pushLine = (text: string, ts: number, sender: number) => {
     let body = text;
@@ -144,7 +145,11 @@ export function parseChat(raw: string, opts: ParseOptions = {}): ParsedChat {
         : firstBreak === -1
           ? ""
           : body.slice(firstBreak + 1).trim();
-      if (!resolved) label = name;
+      if (!resolved) {
+        label = name;
+        // Named, and not in the archive: the export left it behind.
+        missingCount++;
+      }
       mediaCount++;
     } else if (sender >= 0) {
       // "<Media omitted>" / "video omitted", sometimes followed by a file name
@@ -265,6 +270,7 @@ export function parseChat(raw: string, opts: ParseOptions = {}): ParsedChat {
     counts,
     chatName: opts.chatName ?? (senders.length === 2 && other ? other : "Chat"),
     mediaCount,
+    missingCount,
     meIndex,
     hour12: sawMeridiem,
   };

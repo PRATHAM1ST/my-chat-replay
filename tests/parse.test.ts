@@ -182,6 +182,31 @@ test("attachments missing from the archive keep a label", () => {
   assert.equal(chat.messages[0]?.kind, "image");
 });
 
+test("attachments the archive left behind are counted", () => {
+  // WhatsApp stops adding files once an export hits its size ceiling, and
+  // writes the transcript anyway — so a valid .zip names media it lacks.
+  const lines = [
+    "12/03/2024, 09:00 - Ann: IMG-20240312-WA0001.jpg (file attached)",
+    "12/03/2024, 09:01 - Ann: IMG-20240312-WA0002.jpg (file attached)",
+    "12/03/2024, 09:02 - Ann: VID-20240312-WA0003.mp4 (file attached)",
+    "12/03/2024, 09:03 - Ann: just talking",
+  ].join("\n");
+
+  const partial = parseChat(lines, { fileNames: ["IMG-20240312-WA0001.jpg"] });
+  assert.equal(partial.mediaCount, 3);
+  assert.equal(partial.missingCount, 2);
+
+  const whole = parseChat(lines, {
+    fileNames: ["IMG-20240312-WA0001.jpg", "IMG-20240312-WA0002.jpg", "VID-20240312-WA0003.mp4"],
+  });
+  assert.equal(whole.missingCount, 0, "nothing to report when the archive is complete");
+
+  // "<Media omitted>" is a different animal: the export was made without media
+  // and says so, rather than promising a file it does not carry.
+  const omitted = parseChat("12/03/2024, 09:00 - Ann: <Media omitted>");
+  assert.equal(omitted.missingCount, 0);
+});
+
 test("attachments are matched by base name inside folders", () => {
   const chat = parseChat("12/03/2024, 09:00 - Ann: IMG-20240312-WA0001.jpg (file attached)", {
     fileNames: ["WhatsApp Chat with Ann/IMG-20240312-WA0001.jpg"],

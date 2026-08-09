@@ -25,6 +25,15 @@ export interface ParsedChat {
   chatName: string;
   mediaCount: number;
   /**
+   * Attachments the transcript names by file but the archive does not carry.
+   *
+   * WhatsApp's "include media" export stops adding files once it hits its size
+   * ceiling and writes the transcript anyway, so a perfectly valid .zip can
+   * reference hundreds of photos it does not contain. Counting them is what
+   * lets the app say so instead of leaving a wall of grey chips.
+   */
+  missingCount: number;
+  /**
    * Which sender is "me": never the one the archive is named after
    * ("WhatsApp Chat with Ann"), else the busiest sender as a fallback guess.
    */
