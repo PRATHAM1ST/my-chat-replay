@@ -25,7 +25,7 @@ import { DropZone } from "./DropZone";
 import { Lightbox } from "./Lightbox";
 import { MessageList } from "./MessageList";
 import { NavRail } from "./NavRail";
-import { PwaInstallPrompt } from "./PwaInstallPrompt";
+import { PwaInstallBanner } from "./PwaInstallBanner";
 import { SearchPanel } from "./SearchPanel";
 
 
@@ -406,7 +406,7 @@ export function ChatViewer() {
     return (
       <>
         <DropZone onFile={handleFile} busy={busy} phase={phase} pct={pct} error={error} />
-        <PwaInstallPrompt />
+        <PwaInstallBanner />
       </>
     );
   }
@@ -551,7 +551,7 @@ export function ChatViewer() {
         onClose={() => setLightboxIdx(null)}
       />
 
-      <PwaInstallPrompt />
+      <PwaInstallBanner />
     </main>
   );
 }
