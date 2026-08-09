@@ -1,7 +1,6 @@
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
-@import "@fontsource/noto-color-emoji";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -18,6 +17,68 @@
  * 1. Add the variable to :root (light value) and .dark (dark value)
  * 2. Register it in @theme inline as --color-<name>: var(--<name>)
  */
+
+/* ---------------------------------------------------------------------------
+ * Typography
+ *
+ * WhatsApp itself renders in the platform UI font — Segoe UI on Windows,
+ * Helvetica Neue on macOS. We keep that order so the app is pixel-identical to
+ * the real client where those fonts exist, and self-host Inter as the fallback
+ * so Linux/ChromeOS get a clean UI face instead of a random default.
+ *
+ * Emoji resolve through "System Emoji" first — a family that is nothing but
+ * local() lookups, so every platform that already ships colour emoji (Apple
+ * Color Emoji, which is the set WhatsApp itself renders on iOS/macOS, Segoe UI
+ * Emoji on Windows, Noto on Android/Linux) uses its own and downloads nothing.
+ * Only a machine with no colour emoji font at all falls through to the bundled
+ * Noto Color Emoji webfont, so emoji are never monochrome or tofu boxes.
+ * ------------------------------------------------------------------------- */
+@font-face {
+  font-family: "System Emoji";
+  font-display: swap;
+  src:
+    local("Apple Color Emoji"), local("Segoe UI Emoji"), local("Segoe UI Symbol"),
+    local("Noto Color Emoji"), local("Twemoji Mozilla"), local("EmojiOne Color"),
+    local("Android Emoji");
+}
+
+/*
+ * The COMPLETE Noto Color Emoji face, not the unicode-range build that
+ * `@fontsource/noto-color-emoji`'s default entry point ships: those subsets
+ * cover only a slice of the emoji block — 👍 U+1F44D and ❤️ U+2764 FE0F are
+ * both absent from every range and render as blank boxes. Referenced as woff2
+ * only so the redundant .woff twin never reaches the bundle.
+ */
+@font-face {
+  font-family: "Noto Color Emoji";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("@fontsource/noto-color-emoji/files/noto-color-emoji-emoji-400-normal.woff2")
+    format("woff2");
+}
+
+@font-face {
+  font-family: "Inter Var";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("/fonts/inter-latin.woff2") format("woff2-variations");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Inter Var";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("/fonts/inter-latin-ext.woff2") format("woff2-variations");
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
+}
 
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
@@ -144,75 +205,186 @@
   }
 }
 
-/* ---------- WhatsApp viewer design tokens ---------- */
+/* ===========================================================================
+ * WhatsApp viewer design tokens
+ *
+ * Values are the real WhatsApp Web palette converted to oklch:
+ *   light  #ffffff surface · #f0f2f5 panel · #efeae2 wallpaper · #d9fdd3 out
+ *   dark   #111b21 surface · #202c33 panel · #0b141a wallpaper · #005c4b out
+ * ======================================================================== */
 @theme inline {
   --font-sans:
-    "Segoe UI", Helvetica, "Helvetica Neue", system-ui, -apple-system, "Noto Color Emoji",
-    "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
+    "Segoe UI", "Helvetica Neue", "Inter Var", system-ui, -apple-system, Roboto, Ubuntu,
+    "System Emoji", "Noto Color Emoji", sans-serif;
+  --font-emoji: "System Emoji", "Noto Color Emoji", sans-serif;
 
+  /* surfaces */
+  --color-wa-app: var(--wa-app);
+  --color-wa-surface: var(--wa-surface);
   --color-wa-panel: var(--wa-panel);
   --color-wa-panel-foreground: var(--wa-panel-foreground);
+  --color-wa-elevated: var(--wa-elevated);
   --color-wa-chat: var(--wa-chat);
+  --color-wa-hover: var(--wa-hover);
+  --color-wa-active: var(--wa-active);
+  --color-wa-input: var(--wa-input);
+
+  /* bubbles */
   --color-wa-in: var(--wa-in);
   --color-wa-in-foreground: var(--wa-in-foreground);
   --color-wa-out: var(--wa-out);
   --color-wa-out-foreground: var(--wa-out-foreground);
+  --color-wa-system: var(--wa-system);
+  --color-wa-system-foreground: var(--wa-system-foreground);
+
+  /* accents */
   --color-wa-teal: var(--wa-teal);
   --color-wa-green: var(--wa-green);
   --color-wa-tick: var(--wa-tick);
   --color-wa-meta: var(--wa-meta);
+  --color-wa-icon: var(--wa-icon);
   --color-wa-link: var(--wa-link);
   --color-wa-divider: var(--wa-divider);
   --color-wa-highlight: var(--wa-highlight);
+  --color-wa-highlight-foreground: var(--wa-highlight-foreground);
 }
 
 :root {
-  --wa-panel: oklch(0.96 0.005 258.3);
-  --wa-panel-foreground: oklch(0.215 0.019 235.1);
-  --wa-chat: oklch(0.939 0.012 79.8);
-  --wa-in: oklch(1 0 0);
-  --wa-in-foreground: oklch(0.215 0.019 235.1);
-  --wa-out: oklch(0.957 0.067 141.1);
-  --wa-out-foreground: oklch(0.215 0.019 235.1);
-  --wa-teal: oklch(0.424 0.08 174.4);
-  --wa-green: oklch(0.651 0.157 153.9);
-  --wa-tick: oklch(0.755 0.117 229.7);
-  --wa-meta: oklch(0.559 0.025 233.7);
-  --wa-link: oklch(0.52 0.13 240);
-  --wa-divider: oklch(0.876 0.009 236.6);
-  --wa-highlight: oklch(0.9 0.14 100);
-  --wa-name-1: oklch(0.55 0.15 250);
-  --wa-name-2: oklch(0.55 0.15 20);
-  --wa-name-3: oklch(0.5 0.13 160);
-  --wa-name-4: oklch(0.52 0.15 300);
-  --wa-name-5: oklch(0.55 0.14 60);
-  --wa-name-6: oklch(0.5 0.13 200);
+  /* surfaces — light */
+  --wa-app: oklch(0.9605 0.0046 258.32); /* #f0f2f5 shell behind the panes */
+  --wa-surface: oklch(1 0 0); /* #ffffff  list + panel body     */
+  --wa-panel: oklch(0.9605 0.0046 258.32); /* #f0f2f5  headers               */
+  --wa-panel-foreground: oklch(0.2153 0.0187 235.13); /* #111b21 */
+  --wa-elevated: oklch(1 0 0); /* menus, popovers                */
+  --wa-chat: oklch(0.9261 0.0103 81.79); /* #eae6df  wallpaper base        */
+  --wa-hover: oklch(0.9724 0.0011 197.14); /* #f5f6f6 */
+  --wa-active: oklch(0.9605 0.0046 258.32); /* #f0f2f5 */
+  --wa-input: oklch(0.9605 0.0046 258.32); /* #f0f2f5 */
+
+  /* bubbles — light */
+  --wa-in: oklch(1 0 0); /* #ffffff */
+  --wa-in-foreground: oklch(0.2153 0.0187 235.13); /* #111b21 */
+  --wa-out: oklch(0.9575 0.0669 141.12); /* #d9fdd3 */
+  --wa-out-foreground: oklch(0.2153 0.0187 235.13); /* #111b21 */
+  --wa-system: oklch(0.9543 0.0468 83.94); /* #ffeecd */
+  --wa-system-foreground: oklch(0.4963 0.0261 233.85); /* #54656f */
+
+  /* accents — light */
+  --wa-teal: oklch(0.5352 0.1016 174.23); /* #008069 */
+  --wa-green: oklch(0.6509 0.1283 170.43); /* #00a884 */
+  --wa-tick: oklch(0.7549 0.117 229.73); /* #53bdeb */
+  --wa-meta: oklch(0.5589 0.0255 233.72); /* #667781 */
+  --wa-icon: oklch(0.4963 0.0261 233.85); /* #54656f */
+  --wa-link: oklch(0.563 0.1241 237.89); /* #027eb5 */
+  --wa-divider: oklch(0.9436 0.0051 228.82); /* #e9edef */
+  --wa-highlight: oklch(0.8883 0.1697 95.26); /* #fdd835 */
+  --wa-highlight-foreground: oklch(0.2153 0.0187 235.13);
+
+  /* wallpaper doodle */
+  --wa-doodle-color: oklch(0.2153 0.0187 235.13);
+  --wa-doodle-opacity: 0.06;
+
+  /* group participant name colours — tuned for white bubbles */
+  --wa-name-1: oklch(0.55 0.2 348.45);
+  --wa-name-2: oklch(0.52 0.11 184.34);
+  --wa-name-3: oklch(0.55 0.11 224.94);
+  --wa-name-4: oklch(0.55 0.12 87.57);
+  --wa-name-5: oklch(0.55 0.17 20.94);
+  --wa-name-6: oklch(0.52 0.22 285.57);
+  --wa-name-7: oklch(0.53 0.16 248.39);
+  --wa-name-8: oklch(0.56 0.15 45.83);
+
+  /* elevation — WhatsApp uses very tight, low-alpha shadows */
+  --wa-shadow-bubble: 0 1px 0.5px oklch(0.2153 0.0187 235.13 / 0.13);
+  --wa-shadow-panel: 0 2px 5px oklch(0.2153 0.0187 235.13 / 0.16);
+  --wa-shadow-float: 0 4px 14px oklch(0.2153 0.0187 235.13 / 0.18);
 }
 
 .dark {
-  --wa-panel: oklch(0.285 0.021 234.1);
-  --wa-panel-foreground: oklch(0.944 0.005 228.8);
-  --wa-chat: oklch(0.185 0.018 238.2);
-  --wa-in: oklch(0.285 0.021 234.1);
-  --wa-in-foreground: oklch(0.944 0.005 228.8);
-  --wa-out: oklch(0.424 0.08 174.4);
-  --wa-out-foreground: oklch(0.944 0.005 228.8);
-  --wa-teal: oklch(0.651 0.128 170.4);
-  --wa-green: oklch(0.761 0.201 149.7);
-  --wa-tick: oklch(0.755 0.117 229.7);
-  --wa-meta: oklch(0.664 0.024 235.2);
-  --wa-link: oklch(0.78 0.1 220);
-  --wa-divider: oklch(0.335 0.025 234.9);
+  /* surfaces — dark */
+  --wa-app: oklch(0.1854 0.0182 238.21); /* #0b141a */
+  --wa-surface: oklch(0.2153 0.0187 235.13); /* #111b21 */
+  --wa-panel: oklch(0.2851 0.0209 234.05); /* #202c33 */
+  --wa-panel-foreground: oklch(0.9436 0.0051 228.82); /* #e9edef */
+  --wa-elevated: oklch(0.2851 0.0209 234.05); /* #202c33 */
+  --wa-chat: oklch(0.1854 0.0182 238.21); /* #0b141a */
+  --wa-hover: oklch(0.2851 0.0209 234.05); /* #202c33 */
+  --wa-active: oklch(0.3351 0.0253 234.86); /* #2a3942 */
+  --wa-input: oklch(0.2851 0.0209 234.05); /* #202c33 */
+
+  /* bubbles — dark */
+  --wa-in: oklch(0.2851 0.0209 234.05); /* #202c33 */
+  --wa-in-foreground: oklch(0.9436 0.0051 228.82); /* #e9edef */
+  --wa-out: oklch(0.4237 0.0803 174.41); /* #005c4b */
+  --wa-out-foreground: oklch(0.9436 0.0051 228.82); /* #e9edef */
+  --wa-system: oklch(0.2456 0.0195 239.11); /* #182229 */
+  --wa-system-foreground: oklch(0.6637 0.0236 235.2); /* #8696a0 */
+
+  /* accents — dark */
+  --wa-teal: oklch(0.6509 0.1283 170.43); /* #00a884 */
+  --wa-green: oklch(0.6509 0.1283 170.43); /* #00a884 */
+  --wa-tick: oklch(0.7549 0.117 229.73); /* #53bdeb */
+  --wa-meta: oklch(0.6637 0.0236 235.2); /* #8696a0 */
+  --wa-icon: oklch(0.7817 0.0167 233.09); /* #aebac1 */
+  --wa-link: oklch(0.7549 0.117 229.73); /* #53bdeb */
+  --wa-divider: oklch(0.29 0.0198 236.29); /* #222d34 */
   --wa-highlight: oklch(0.6 0.13 100);
-  --wa-name-1: oklch(0.78 0.11 250);
-  --wa-name-2: oklch(0.78 0.12 20);
-  --wa-name-3: oklch(0.8 0.12 160);
-  --wa-name-4: oklch(0.78 0.12 300);
-  --wa-name-5: oklch(0.82 0.12 60);
-  --wa-name-6: oklch(0.78 0.1 200);
+  --wa-highlight-foreground: oklch(0.9436 0.0051 228.82);
+
+  --wa-doodle-color: oklch(0.9436 0.0051 228.82);
+  --wa-doodle-opacity: 0.035;
+
+  /* group participant name colours — WhatsApp's dark palette */
+  --wa-name-1: oklch(0.6433 0.2181 348.45);
+  --wa-name-2: oklch(0.6518 0.115 184.34);
+  --wa-name-3: oklch(0.797 0.1039 224.94);
+  --wa-name-4: oklch(0.7909 0.1335 87.57);
+  --wa-name-5: oklch(0.7615 0.1421 20.94);
+  --wa-name-6: oklch(0.6166 0.2175 285.57);
+  --wa-name-7: oklch(0.7067 0.1609 248.39);
+  --wa-name-8: oklch(0.7829 0.1355 45.83);
+
+  --wa-shadow-bubble: 0 1px 0.5px oklch(0 0 0 / 0.28);
+  --wa-shadow-panel: 0 2px 5px oklch(0 0 0 / 0.4);
+  --wa-shadow-float: 0 4px 14px oklch(0 0 0 / 0.5);
 }
 
-/* WhatsApp doodle wallpaper — fixed behind the scrolling transcript */
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Slim WhatsApp-style scrollbars that only show against the surface. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--wa-divider) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  *::-webkit-scrollbar-thumb {
+    background-color: color-mix(in oklab, var(--wa-meta) 35%, transparent);
+    border-radius: 999px;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: color-mix(in oklab, var(--wa-meta) 60%, transparent);
+  }
+}
+
+/* ---------- wallpaper ------------------------------------------------------
+ * The doodle is painted once as a fixed layer behind the scrolling transcript
+ * so it never repaints while the virtualizer moves rows.
+ * ------------------------------------------------------------------------ */
 .wa-doodle {
   position: relative;
   background-color: var(--wa-chat);
@@ -222,20 +394,24 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background-color: var(--wa-panel-foreground);
+  background-color: var(--wa-doodle-color);
   mask-image: url("/wa-wallpaper.svg");
   mask-repeat: repeat;
-  mask-size: 420px 420px;
+  mask-size: 400px 400px;
   -webkit-mask-image: url("/wa-wallpaper.svg");
   -webkit-mask-repeat: repeat;
-  -webkit-mask-size: 420px 420px;
-  opacity: 0.07;
+  -webkit-mask-size: 400px 400px;
+  opacity: var(--wa-doodle-opacity);
 }
 
-/* Authentic bubble corner tails (8x13, WhatsApp Web geometry) */
+/* ---------- bubbles --------------------------------------------------------
+ * WhatsApp Web geometry: 7.5px radius, square corner on the tail side, and an
+ * 8x13 tail drawn with a clip-path so it inherits the bubble colour.
+ * ------------------------------------------------------------------------ */
 .wa-bubble {
   position: relative;
   border-radius: 7.5px;
+  box-shadow: var(--wa-shadow-bubble);
 }
 .wa-bubble-tail-in {
   border-top-left-radius: 0;
@@ -262,25 +438,133 @@
   clip-path: path("M0 0 L0 13 C2.8 8.5 5.4 4.4 8 0 Z");
 }
 
-/* Emoji rendering: prefer the colour emoji font for pictographs */
-.wa-text {
+/* Search hit that is currently selected — WhatsApp flashes the whole bubble. */
+@keyframes wa-flash {
+  0%,
+  100% {
+    box-shadow: var(--wa-shadow-bubble);
+  }
+  35% {
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--wa-green) 55%, transparent);
+  }
+}
+.wa-bubble-active {
+  animation: wa-flash 1.1s ease-in-out 2;
+}
+
+/* ---------- emoji ----------------------------------------------------------
+ * `font-variant-emoji: emoji` forces colour presentation for codepoints that
+ * default to text presentation. It is deliberately NOT applied to message text:
+ * ASCII digits, # and * are all keycap bases, so the property drags every digit
+ * in the transcript into the emoji font and "10" comes out as "1 0". Message
+ * bodies rely on the variation selector WhatsApp already writes into its
+ * exports; only spans that are known to be nothing but emoji opt in.
+ * ------------------------------------------------------------------------ */
+.wa-emoji {
+  font-family: var(--font-emoji);
   font-variant-emoji: emoji;
+  line-height: 1;
+}
+/* Emoji-only messages render large and without a bubble, exactly like the app */
+.wa-emoji-only,
+.wa-emoji-only-md {
+  font-variant-emoji: emoji;
+  line-height: 1.2;
 }
 .wa-emoji-only {
   font-size: 40px;
-  line-height: 1.15;
 }
 .wa-emoji-only-md {
   font-size: 32px;
-  line-height: 1.15;
 }
-
 .wa-emoji-transparent {
   background: transparent;
   box-shadow: none;
 }
-
 .wa-emoji-transparent.wa-bubble-tail-in::before,
 .wa-emoji-transparent.wa-bubble-tail-out::before {
   display: none;
+}
+
+/* ---------- virtualizer ----------------------------------------------------
+ * Scroll anchoring fights the virtualizer whenever a measured row changes
+ * height, and per-row `will-change` promotes every visible row to its own
+ * compositor layer. Both are disabled here; rows get cheap paint containment
+ * instead so a re-render never invalidates the whole transcript.
+ * ------------------------------------------------------------------------ */
+.wa-scroller {
+  overflow-anchor: none;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.wa-row {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  contain: layout style paint;
+}
+
+/* ---------- misc -----------------------------------------------------------*/
+.wa-fade-in {
+  animation: wa-fade-in 0.16s ease-out;
+}
+@keyframes wa-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.wa-slide-in {
+  animation: wa-slide-in 0.18s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+@keyframes wa-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Media that has not been decoded yet keeps its slot at the cached ratio so
+ * the transcript never reflows when a picture pops in. */
+.wa-media-skeleton {
+  background:
+    linear-gradient(
+      100deg,
+      transparent 20%,
+      color-mix(in oklab, var(--wa-meta) 14%, transparent) 45%,
+      transparent 70%
+    ),
+    color-mix(in oklab, var(--wa-meta) 10%, transparent);
+  background-size:
+    220% 100%,
+    100% 100%;
+  animation: wa-shimmer 1.35s linear infinite;
+}
+@keyframes wa-shimmer {
+  from {
+    background-position:
+      120% 0,
+      0 0;
+  }
+  to {
+    background-position:
+      -120% 0,
+      0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wa-media-skeleton,
+  .wa-bubble-active,
+  .wa-fade-in,
+  .wa-slide-in {
+    animation: none;
+  }
 }

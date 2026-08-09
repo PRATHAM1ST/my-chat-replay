@@ -1,57 +1,181 @@
-import { useEffect, useState } from "react";
-import { FileText, Download, Play, ImageOff } from "lucide-react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { Download, FileText, ImageOff, Mic, Pause, Play, Video } from "lucide-react";
 import type { WaClient } from "@/lib/whatsapp/client";
+import { mediaBox } from "@/lib/whatsapp/layout";
 import type { Msg } from "@/lib/whatsapp/types";
-import { Button } from "@/components/ui/button";
 
 interface Props {
   msg: Msg;
   client: WaClient;
+  isMe: boolean;
   onOpen: (msg: Msg, url: string) => void;
+}
+
+/**
+ * Resolves one attachment out of the archive.
+ *
+ * The request is deferred by a frame or two: flinging through a long chat
+ * mounts and unmounts hundreds of media rows, and firing an extraction for
+ * every one of them starves the worker so the pictures that actually stopped
+ * on screen arrive last.
+ */
+function useMediaUrl(file: string | undefined, client: WaClient) {
+  const [url, setUrl] = useState<string | null>(() => null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    if (!file) return;
+    setFailed(false);
+    let alive = true;
+    const timer = setTimeout(() => {
+      client
+        .media(file)
+        .then((r) => alive && setUrl(r.url))
+        .catch(() => alive && setFailed(true));
+    }, 90);
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+      setUrl(null);
+    };
+  }, [file, client]);
+
+  return { url, failed };
+}
+
+function Missing({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-2 rounded-[6px] bg-black/[0.04] px-3 py-3 text-[13px] text-wa-meta dark:bg-white/[0.06]">
+      <ImageOff className="size-4 shrink-0" />
+      <span className="min-w-0 flex-1 truncate" title={label}>
+        {label}
+      </span>
+      <span className="shrink-0 text-[11px] opacity-70">not in export</span>
+    </div>
+  );
+}
+
+function secs(total: number) {
+  if (!Number.isFinite(total) || total < 0) return "0:00";
+  const m = Math.floor(total / 60);
+  const s = Math.floor(total % 60);
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+/** WhatsApp voice note: avatar, play control, seekable bar, running time. */
+function VoiceNote({ url, isMe }: { url: string | null; isMe: boolean }) {
+  const audio = useRef<HTMLAudioElement>(null);
+  const [playing, setPlaying] = useState(false);
+  const [time, setTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+
+  const toggle = useCallback(() => {
+    const el = audio.current;
+    if (!el) return;
+    if (el.paused) void el.play();
+    else el.pause();
+  }, []);
+
+  const pct = duration > 0 ? Math.min(100, (time / duration) * 100) : 0;
+
+  return (
+    <div className="flex w-[248px] max-w-full items-center gap-2 py-1 pl-0.5 pr-1">
+      <span
+        className={`flex size-10 shrink-0 items-center justify-center rounded-full ${
+          isMe ? "bg-wa-teal/25" : "bg-wa-teal/15"
+        } text-wa-teal dark:text-wa-green`}
+      >
+        <Mic className="size-5" />
+      </span>
+      <button
+        type="button"
+        onClick={toggle}
+        disabled={!url}
+        aria-label={playing ? "Pause voice message" : "Play voice message"}
+        className="flex size-8 shrink-0 items-center justify-center rounded-full text-wa-icon transition-colors hover:bg-black/5 disabled:opacity-40 dark:hover:bg-white/10"
+      >
+        {playing ? (
+          <Pause className="size-5 fill-current" />
+        ) : (
+          <Play className="size-5 translate-x-[1px] fill-current" />
+        )}
+      </button>
+      <div className="min-w-0 flex-1">
+        <div className="relative h-[3px] w-full rounded-full bg-wa-meta/40">
+          <div
+            className="absolute inset-y-0 left-0 rounded-full bg-wa-green transition-[width] duration-100"
+            style={{ width: `${pct}%` }}
+          />
+          <span
+            className="absolute top-1/2 size-[11px] -translate-y-1/2 rounded-full bg-wa-green shadow-sm"
+            style={{ left: `calc(${pct}% - 5px)` }}
+          />
+          <input
+            type="range"
+            min={0}
+            max={Math.max(1, duration)}
+            step={0.05}
+            value={time}
+            aria-label="Seek voice message"
+            onChange={(e) => {
+              const el = audio.current;
+              if (!el) return;
+              el.currentTime = Number(e.target.value);
+              setTime(Number(e.target.value));
+            }}
+            className="absolute inset-x-0 -top-2 h-6 w-full cursor-pointer opacity-0"
+          />
+        </div>
+        <p className="mt-1.5 text-[11px] leading-none text-wa-meta">
+          {secs(playing || time > 0 ? time : duration)}
+        </p>
+      </div>
+      <audio
+        ref={audio}
+        src={url ?? undefined}
+        preload="metadata"
+        onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
+        onTimeUpdate={(e) => setTime(e.currentTarget.currentTime)}
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+        onEnded={() => {
+          setPlaying(false);
+          setTime(0);
+        }}
+        className="hidden"
+      />
+    </div>
+  );
 }
 
 /**
  * Extracts one attachment from the archive lazily — only while its bubble is
  * mounted by the virtualizer. URLs come from the client's LRU cache.
  */
-export function MediaAttachment({ msg, client, onOpen }: Props) {
-  const [url, setUrl] = useState<string | null>(null);
-  const [failed, setFailed] = useState(false);
+export const MediaAttachment = memo(function MediaAttachment({ msg, client, isMe, onOpen }: Props) {
   const file = msg.file;
-
-  useEffect(() => {
-    if (!file) return;
-    let alive = true;
-    client
-      .media(file)
-      .then((r) => alive && setUrl(r.url))
-      .catch(() => alive && setFailed(true));
-    return () => {
-      alive = false;
-    };
-  }, [file, client]);
-
+  const { url, failed } = useMediaUrl(file, client);
+  const [ratio, setRatio] = useState(() => client.ratio(file));
   const label = (file?.split("/").pop() ?? msg.label ?? msg.text) || "Attachment";
 
-  if (!file || failed) {
-    return (
-      <div className="flex items-center gap-2 bg-wa-panel px-3 py-3 text-xs text-wa-meta">
-        <ImageOff className="size-4 shrink-0" />
-        <span className="max-w-52 truncate" title={label}>
-          {label}
-        </span>
-        <span className="shrink-0 opacity-70">· not in export</span>
-      </div>
-    );
-  }
+  const remember = useCallback(
+    (w: number, h: number) => {
+      if (!file || !w || !h) return;
+      client.rememberRatio(file, w, h);
+      setRatio((prev) => (prev?.w === w && prev?.h === h ? prev : { w, h }));
+    },
+    [client, file],
+  );
 
-  if (msg.kind === "image" || msg.kind === "sticker") {
-    const sticker = msg.kind === "sticker";
+  if (!file || failed) return <Missing label={label} />;
+
+  if (msg.kind === "sticker") {
     return (
-      <Button
-        variant="ghost"
+      <button
+        type="button"
         onClick={() => url && onOpen(msg, url)}
-        className="block h-auto w-full overflow-hidden rounded-none p-0 hover:opacity-95"
+        aria-label="Open sticker"
+        className="block size-[130px] rounded-[6px] transition-opacity hover:opacity-90"
       >
         {url ? (
           <img
@@ -59,52 +183,88 @@ export function MediaAttachment({ msg, client, onOpen }: Props) {
             alt={label}
             loading="lazy"
             decoding="async"
-            className={
-              sticker ? "h-32 w-32 object-contain" : "max-h-80 w-full object-cover sm:max-w-xs"
-            }
+            className="size-full object-contain"
           />
         ) : (
-          <div className="h-40 w-56 animate-pulse bg-wa-divider" />
+          <span className="wa-media-skeleton block size-full rounded-[6px]" />
         )}
-      </Button>
+      </button>
     );
   }
 
-  if (msg.kind === "video") {
+  if (msg.kind === "image" || msg.kind === "video") {
+    const { w, h } = mediaBox(ratio);
+    const video = msg.kind === "video";
     return (
-      <Button
-        variant="ghost"
+      <button
+        type="button"
         onClick={() => url && onOpen(msg, url)}
-        className="relative block h-auto w-full overflow-hidden rounded-none p-0 hover:opacity-95"
+        aria-label={video ? "Play video" : "Open photo"}
+        style={{ width: w, aspectRatio: `${w} / ${h}` }}
+        className="group relative block max-w-full overflow-hidden rounded-[6px] bg-black/5 dark:bg-white/5"
       >
-        <video
-          src={url ? `${url}#t=0.1` : undefined}
-          preload="metadata"
-          muted
-          className="max-h-72 w-full max-w-xs bg-wa-panel-foreground object-cover"
-        />
-        <span className="absolute inset-0 flex items-center justify-center">
-          <span className="flex size-11 items-center justify-center rounded-full bg-wa-panel-foreground/70">
-            <Play className="size-5 fill-current text-wa-panel" />
-          </span>
-        </span>
-      </Button>
+        {url ? (
+          video ? (
+            <video
+              src={`${url}#t=0.1`}
+              preload="metadata"
+              muted
+              playsInline
+              onLoadedMetadata={(e) =>
+                remember(e.currentTarget.videoWidth, e.currentTarget.videoHeight)
+              }
+              className="wa-fade-in size-full object-cover"
+            />
+          ) : (
+            <img
+              src={url}
+              alt={label}
+              loading="lazy"
+              decoding="async"
+              onLoad={(e) => remember(e.currentTarget.naturalWidth, e.currentTarget.naturalHeight)}
+              className="wa-fade-in size-full object-cover"
+            />
+          )
+        ) : (
+          <span className="wa-media-skeleton absolute inset-0 block" />
+        )}
+
+        {video && (
+          <>
+            <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-black/55 px-2 py-[3px] text-[11px] font-medium text-white backdrop-blur-sm">
+              <Video className="size-3" /> Video
+            </span>
+            <span className="absolute inset-0 flex items-center justify-center">
+              <span className="flex size-12 items-center justify-center rounded-full bg-black/45 backdrop-blur-sm transition-transform group-hover:scale-105">
+                <Play className="size-6 translate-x-[2px] fill-white text-white" />
+              </span>
+            </span>
+          </>
+        )}
+      </button>
     );
   }
 
-  if (msg.kind === "audio") {
-    return <audio controls preload="none" src={url ?? undefined} className="w-56 max-w-full" />;
-  }
+  if (msg.kind === "audio") return <VoiceNote url={url} isMe={isMe} />;
 
   return (
     <a
       href={url ?? undefined}
       download={label}
-      className="flex items-center gap-2 bg-wa-panel px-3 py-3 text-xs hover:bg-wa-divider/60"
+      className="flex w-[280px] max-w-full items-center gap-3 rounded-[6px] bg-black/[0.045] px-3 py-2.5 transition-colors hover:bg-black/[0.07] dark:bg-white/[0.06] dark:hover:bg-white/[0.1]"
     >
-      <FileText className="size-4 shrink-0" />
-      <span className="max-w-40 truncate">{label}</span>
-      <Download className="size-3.5 shrink-0 opacity-70" />
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-white/70 text-wa-meta dark:bg-black/25">
+        <FileText className="size-5" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[13.5px] leading-[18px]" title={label}>
+          {label}
+        </span>
+        <span className="mt-0.5 block text-[11px] uppercase text-wa-meta">
+          {label.split(".").pop()?.slice(0, 5) ?? "file"} document
+        </span>
+      </span>
+      <Download className="size-4 shrink-0 text-wa-meta" />
     </a>
   );
-}
+});

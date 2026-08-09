@@ -1,5 +1,15 @@
-import { ArrowLeft, ArrowLeftRight, MoreVertical, Search, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ArrowLeft, ArrowLeftRight, Check, Info, MoreVertical, Search, X } from "lucide-react";
+import {
+  Avatar,
+  Emoji,
+  IconButton,
+  Menu,
+  MenuContent,
+  MenuItem,
+  MenuLabel,
+  MenuSeparator,
+  MenuTrigger,
+} from "./ui";
 
 interface Props {
   chatName: string;
@@ -11,6 +21,7 @@ interface Props {
   onToggleSearch: () => void;
   onBack: () => void;
   onOpenInfo: () => void;
+  onCloseChat: () => void;
 }
 
 export function ChatHeader({
@@ -23,75 +34,87 @@ export function ChatHeader({
   onToggleSearch,
   onBack,
   onOpenInfo,
+  onCloseChat,
 }: Props) {
-  const initials = chatName.slice(0, 2).toUpperCase();
+  const subtitle =
+    senders.length > 2 ? senders.join(", ") : senders.filter((_, i) => i !== meIndex).join(", ");
+
   return (
-    <header className="grid h-[59px] shrink-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 bg-wa-panel px-3 text-wa-panel-foreground">
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={onBack}
-        aria-label="Close chat"
-        className="-ml-1 rounded-full hover:bg-wa-divider/60 md:hidden"
-      >
+    <header className="z-20 flex h-[60px] shrink-0 items-center gap-1 border-b border-wa-divider bg-wa-panel pl-1 pr-2 text-wa-panel-foreground sm:pl-3">
+      <IconButton onClick={onBack} aria-label="Back to chats" className="md:hidden">
         <ArrowLeft className="size-5" />
-      </Button>
-      <Button
-        variant="ghost"
+      </IconButton>
+
+      <button
+        type="button"
         onClick={onOpenInfo}
-        className="h-[59px] min-w-0 justify-start rounded-none px-0 hover:bg-transparent"
+        className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-lg px-1 py-1.5 text-left transition-colors hover:bg-black/[0.03] dark:hover:bg-white/[0.04]"
       >
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-wa-teal text-sm font-semibold text-wa-out-foreground">
-          {initials}
-        </span>
-        <span className="min-w-0 text-left">
-          <span className="block truncate text-[16px] font-normal leading-[21px]">{chatName}</span>
-          <span className="block truncate text-[13px] font-normal leading-[17px] text-wa-meta">
-            {senders.length > 2 ? `${senders.length} participants` : senders.join(", ")}
+        <Avatar name={chatName} seed={chatName.length} />
+        <span className="min-w-0">
+          <span className="block truncate text-[16px] font-normal leading-[21px]">
+            <Emoji text={chatName} />
+          </span>
+          <span className="block truncate text-[13px] leading-[17px] text-wa-meta">
+            <Emoji
+              text={senders.length > 2 ? `${senders.length} participants · ${subtitle}` : subtitle}
+            />
           </span>
         </span>
-      </Button>
+      </button>
 
       <div className="flex shrink-0 items-center">
         {senders.length > 1 && (
-          <Button
-            variant="ghost"
-            size="icon"
+          <IconButton
             onClick={onSwap}
-            aria-label="Swap sender and receiver sides"
-            title={`Swap sides (you: ${senders[meIndex] ?? ""})`}
-            className="rounded-full hover:bg-wa-divider/60"
+            aria-label="Swap sides"
+            title={`Swap sides — you are ${senders[meIndex] ?? ""}`}
+            className="hidden sm:flex"
           >
             <ArrowLeftRight className="size-5" />
-          </Button>
+          </IconButton>
         )}
-        <Button
-          variant="ghost"
-          size="icon"
+        <IconButton
           onClick={onToggleSearch}
-          aria-label="Search messages"
-          className={`rounded-full hover:bg-wa-divider/60 ${searchOpen ? "bg-wa-divider/60" : ""}`}
+          aria-label={searchOpen ? "Close search" : "Search messages"}
+          active={searchOpen}
         >
           {searchOpen ? <X className="size-5" /> : <Search className="size-5" />}
-        </Button>
-        <label className="relative">
-          <span className="sr-only">Choose which participant is you</span>
-          <select
-            value={meIndex}
-            onChange={(e) => onMeChange(Number(e.target.value))}
-            className="absolute inset-0 cursor-pointer opacity-0"
-            aria-label="Choose which participant is you"
-          >
-            {senders.map((s, i) => (
-              <option key={s} value={i}>
-                {s}
-              </option>
-            ))}
-          </select>
-          <span className="flex size-9 items-center justify-center rounded-full hover:bg-wa-divider/60">
-            <MoreVertical className="size-5" />
-          </span>
-        </label>
+        </IconButton>
+
+        <Menu>
+          <MenuTrigger asChild>
+            <IconButton aria-label="Chat menu">
+              <MoreVertical className="size-5" />
+            </IconButton>
+          </MenuTrigger>
+          <MenuContent>
+            <MenuItem onSelect={onOpenInfo}>
+              <Info className="size-4 text-wa-meta" /> Contact info
+            </MenuItem>
+            <MenuItem onSelect={onToggleSearch}>
+              <Search className="size-4 text-wa-meta" /> Search messages
+            </MenuItem>
+            {senders.length > 1 && (
+              <>
+                <MenuSeparator />
+                <MenuLabel>Show as sent by</MenuLabel>
+                {senders.map((name, i) => (
+                  <MenuItem key={name} onSelect={() => onMeChange(i)}>
+                    <span className="flex size-4 items-center justify-center">
+                      {i === meIndex && <Check className="size-4 text-wa-green" />}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate">{name}</span>
+                  </MenuItem>
+                ))}
+              </>
+            )}
+            <MenuSeparator />
+            <MenuItem onSelect={onCloseChat}>
+              <X className="size-4 text-wa-meta" /> Close chat
+            </MenuItem>
+          </MenuContent>
+        </Menu>
       </div>
     </header>
   );

@@ -1,9 +1,10 @@
 import { memo } from "react";
-import { Check, CheckCheck } from "lucide-react";
+import { CheckCheck } from "lucide-react";
 import { formatTime } from "@/lib/whatsapp/format";
 import type { WaClient } from "@/lib/whatsapp/client";
 import type { Msg } from "@/lib/whatsapp/types";
 import { MediaAttachment } from "./MediaAttachment";
+import { Emoji } from "./ui";
 
 interface Props {
   msg: Msg;
@@ -21,7 +22,7 @@ interface Props {
 }
 
 function Highlighted({ text, query }: { text: string; query: string }) {
-  if (!query) return <>{text}</>;
+  if (!query) return <Emoji text={text} />;
   const q = query.toLowerCase();
   const lower = text.toLowerCase();
   const parts: React.ReactNode[] = [];
@@ -29,16 +30,16 @@ function Highlighted({ text, query }: { text: string; query: string }) {
   let at = lower.indexOf(q);
   let k = 0;
   while (at !== -1) {
-    if (at > from) parts.push(text.slice(from, at));
+    if (at > from) parts.push(<Emoji key={k++} text={text.slice(from, at)} />);
     parts.push(
-      <mark key={k++} className="rounded bg-wa-highlight px-0.5 text-inherit">
-        {text.slice(at, at + q.length)}
+      <mark key={k++} className="rounded-[3px] bg-wa-highlight px-0.5 text-wa-highlight-foreground">
+        <Emoji text={text.slice(at, at + q.length)} />
       </mark>,
     );
     from = at + q.length;
     at = lower.indexOf(q, from);
   }
-  parts.push(text.slice(from));
+  parts.push(<Emoji key={k++} text={text.slice(from)} />);
   return <>{parts}</>;
 }
 
@@ -81,6 +82,8 @@ function emojiScale(text: string): "lg" | "md" | null {
   return count <= 3 ? "lg" : "md";
 }
 
+const MEDIA_CARD = new Set(["image", "video", "sticker"]);
+
 export const MessageBubble = memo(function MessageBubble({
   msg,
   isMe,
@@ -97,7 +100,7 @@ export const MessageBubble = memo(function MessageBubble({
   if (msg.kind === "system") {
     return (
       <div className="flex justify-center px-4 py-1.5">
-        <p className="max-w-md rounded-lg bg-wa-panel/95 px-3 py-1.5 text-center text-[12.5px] text-wa-meta shadow-sm">
+        <p className="max-w-[85%] rounded-[7.5px] bg-wa-system px-3 py-[6px] text-center text-[12.5px] leading-[17px] text-wa-system-foreground shadow-[var(--wa-shadow-bubble)] sm:max-w-md">
           <Highlighted text={msg.text} query={isMatch ? query : ""} />
         </p>
       </div>
@@ -106,20 +109,34 @@ export const MessageBubble = memo(function MessageBubble({
 
   const hasMedia = msg.kind !== "text";
   const big = hasMedia ? null : emojiScale(msg.text);
-  const mediaCard = hasMedia && ["image", "video", "sticker"].includes(msg.kind);
+  const sticker = msg.kind === "sticker";
+  const mediaCard = MEDIA_CARD.has(msg.kind);
+  /* Pictures and stickers put the stamp on top of the artwork when there is no
+     caption, exactly like the app does. */
+  const overlayStamp = mediaCard && !msg.text;
+  const bare = !!big || sticker;
 
   return (
-    <div className={`flex px-[5%] py-[1px] md:px-12 ${isMe ? "justify-end" : "justify-start"}`}>
+    <div className={`flex px-[6%] py-[1px] md:px-[7%] ${isMe ? "justify-end" : "justify-start"}`}>
       <div
-        className={`wa-bubble max-w-[85%] overflow-hidden shadow-sm sm:max-w-[65%] ${
-          isMe ? "bg-wa-out text-wa-out-foreground" : "bg-wa-in text-wa-in-foreground"
-        } ${tail ? (isMe ? "wa-bubble-tail-out" : "wa-bubble-tail-in") : ""} ${
-          isActive ? "ring-2 ring-wa-green" : ""
-        } ${big ? "wa-emoji-transparent overflow-visible" : ""} ${mediaCard ? "p-[3px]" : "px-[9px] pb-[6px] pt-[6px]"}`}
+        className={[
+          "wa-bubble relative max-w-[85%] sm:max-w-[65%]",
+          bare
+            ? "wa-emoji-transparent overflow-visible"
+            : isMe
+              ? "bg-wa-out text-wa-out-foreground"
+              : "bg-wa-in text-wa-in-foreground",
+          !bare && tail ? (isMe ? "wa-bubble-tail-out" : "wa-bubble-tail-in") : "",
+          isActive ? "wa-bubble-active" : "",
+          mediaCard ? "p-[3px]" : "px-[9px] py-[6px]",
+          bare ? "shadow-none" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
       >
-        {showName && !isMe && (
+        {showName && !isMe && !big && (
           <p
-            className={`${mediaCard ? "px-1.5 pt-1" : ""} mb-0.5 text-[12.8px] font-medium leading-[17px]`}
+            className={`${mediaCard ? "px-1.5 pt-1" : ""} mb-[3px] truncate text-[12.8px] font-medium leading-[17px]`}
             style={{ color: `var(--wa-name-${colorIdx})` }}
           >
             {senderName}
@@ -127,39 +144,59 @@ export const MessageBubble = memo(function MessageBubble({
         )}
 
         {hasMedia && (
-          <div className={mediaCard ? "overflow-hidden rounded-[5px]" : "-mx-[9px] -mt-[6px] mb-1"}>
-            <MediaAttachment msg={msg} client={client} onOpen={onOpenMedia} />
+          <div className={mediaCard ? "relative overflow-hidden rounded-[6px]" : "mb-1"}>
+            <MediaAttachment msg={msg} client={client} isMe={isMe} onOpen={onOpenMedia} />
+            {overlayStamp && !sticker && (
+              <span className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-end bg-gradient-to-t from-black/45 to-transparent px-2 pb-1 pt-6 text-[11px] leading-[15px] text-white">
+                <span className="flex items-center gap-[3px]">
+                  {msg.edited && <span className="italic opacity-80">edited</span>}
+                  {formatTime(msg.ts)}
+                  {isMe && <CheckCheck className="size-[15px] text-wa-tick" strokeWidth={2.2} />}
+                </span>
+              </span>
+            )}
           </div>
         )}
 
-        <div
-          className={`flex flex-wrap items-end justify-end gap-x-2 ${mediaCard && msg.text ? "px-1.5 pb-1 pt-1.5" : ""} ${mediaCard && !msg.text ? "px-1.5 pb-1" : ""}`}
-        >
-          {msg.text ? (
-            <p
-              className={`wa-text whitespace-pre-wrap break-words text-[14.2px] leading-[19px] ${
-                big === "lg" ? "wa-emoji-only" : big === "md" ? "wa-emoji-only-md" : ""
+        {!overlayStamp && (
+          <div
+            className={`flex flex-wrap items-end justify-end gap-x-2 ${
+              mediaCard && msg.text ? "px-1.5 pb-[3px] pt-1" : ""
+            }`}
+          >
+            {msg.text ? (
+              <p
+                className={`wa-text min-w-0 whitespace-pre-wrap break-words text-[14.2px] leading-[19px] ${
+                  big === "lg" ? "wa-emoji-only" : big === "md" ? "wa-emoji-only-md" : ""
+                }`}
+              >
+                <Body text={msg.text} query={isMatch ? query : ""} />
+              </p>
+            ) : hasMedia ? null : (
+              <p className="text-[14.2px] italic leading-[19px] text-wa-meta">
+                Message not included in export
+              </p>
+            )}
+            <span
+              className={`ml-auto flex shrink-0 items-center gap-[3px] self-end pl-1 text-[11px] leading-[15px] text-wa-meta ${
+                bare
+                  ? "rounded-full bg-wa-in/85 px-1.5 py-0.5 shadow-[var(--wa-shadow-bubble)] backdrop-blur-sm"
+                  : ""
               }`}
             >
-              <Body text={msg.text} query={isMatch ? query : ""} />
-            </p>
-          ) : hasMedia ? null : (
-            <p className="text-[14.2px] italic leading-[19px] text-wa-meta">
-              Message not included in export
-            </p>
-          )}
-          <span
-            className={`ml-auto flex shrink-0 items-center gap-[3px] self-end pl-1 text-[11px] leading-[15px] text-wa-meta ${big ? "rounded bg-wa-in/90 px-1 py-0.5 shadow-sm" : ""}`}
-          >
-            {msg.edited && <span className="italic">edited</span>}
+              {msg.edited && <span className="italic">edited</span>}
+              {formatTime(msg.ts)}
+              {isMe && <CheckCheck className="size-[15px] text-wa-tick" strokeWidth={2.2} />}
+            </span>
+          </div>
+        )}
+
+        {overlayStamp && sticker && (
+          <span className="mt-0.5 flex items-center justify-end gap-[3px] text-[11px] leading-[15px] text-wa-meta">
             {formatTime(msg.ts)}
-            {isMe ? (
-              <CheckCheck className="size-[15px] text-wa-tick" strokeWidth={2.2} />
-            ) : (
-              <Check className="size-[15px] opacity-0" />
-            )}
+            {isMe && <CheckCheck className="size-[15px] text-wa-tick" strokeWidth={2.2} />}
           </span>
-        </div>
+        )}
       </div>
     </div>
   );

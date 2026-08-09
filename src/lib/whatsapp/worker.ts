@@ -1,11 +1,29 @@
 /// <reference lib="webworker" />
 import { unzipSync } from "fflate";
 import { parseChat } from "./parse";
-import { MEDIA_KINDS, mimeFromFileName, type Msg } from "./types";
+import {
+  LINK_RE,
+  SCOPE_KINDS,
+  mimeFromFileName,
+  type Msg,
+  type MsgKind,
+  type SearchScope,
+} from "./types";
 
 let archive: Uint8Array | null = null;
 let messages: Msg[] = [];
 let haystack: string[] = [];
+/** message indices that contain at least one URL — precomputed once */
+let linkFlags: Uint8Array = new Uint8Array(0);
+
+/**
+ * Extracted attachments are cached in the worker so scrolling back over media
+ * never re-inflates it. Bytes are transferred to the main thread, so the cache
+ * keeps its own copy and stays bounded by total size, not entry count.
+ */
+const MEDIA_CACHE_BYTES = 48 * 1024 * 1024;
+const mediaCache = new Map<string, Uint8Array>();
+let mediaCacheBytes = 0;
 
 function post(msg: unknown, transfer?: Transferable[]) {
   (self as unknown as DedicatedWorkerGlobalScope).postMessage(msg, transfer ?? []);
@@ -17,7 +35,13 @@ function chatNameFromTxt(name: string) {
   return m?.[1] ? m[1].trim() : base === "_chat" ? "Chat" : base;
 }
 
+function reset() {
+  mediaCache.clear();
+  mediaCacheBytes = 0;
+}
+
 async function load(file: File) {
+  reset();
   post({ type: "progress", phase: "Reading file", pct: 0.05 });
   const buf = new Uint8Array(await file.arrayBuffer());
 
@@ -63,29 +87,73 @@ async function load(file: File) {
 
   post({ type: "progress", phase: "Indexing", pct: 0.9 });
   messages = parsed.messages;
-  haystack = messages.map((m) => m.text.toLowerCase());
+  haystack = new Array(messages.length);
+  linkFlags = new Uint8Array(messages.length);
+  for (let i = 0; i < messages.length; i++) {
+    const m = messages[i];
+    if (!m) continue;
+    haystack[i] = m.text.toLowerCase();
+    LINK_RE.lastIndex = 0;
+    if (m.text.length > 3 && LINK_RE.test(m.text)) linkFlags[i] = 1;
+  }
 
   post({ type: "loaded", chat: parsed });
 }
 
-function query(id: number, text: string, sender: number | null, mediaOnly: boolean) {
+function scopeMatches(kind: MsgKind, index: number, scope: SearchScope) {
+  if (scope === "all") return true;
+  if (scope === "links") return linkFlags[index] === 1;
+  return (SCOPE_KINDS[scope] ?? []).includes(kind);
+}
+
+/**
+ * Search never filters the transcript — WhatsApp keeps the conversation intact
+ * and lists hits in a side panel — so this only returns the matching indices.
+ */
+function query(id: number, text: string, sender: number | null, scope: SearchScope) {
   const q = text.trim().toLowerCase();
-  const view: number[] = [];
+  const active = q.length > 0 || sender !== null || scope !== "all";
+  if (!active) {
+    const empty = new Int32Array(0);
+    post({ type: "query", id, matches: empty }, [empty.buffer]);
+    return;
+  }
+
   const matches: number[] = [];
   for (let i = 0; i < messages.length; i++) {
     const m = messages[i];
-    if (!m) continue;
+    if (!m || m.kind === "system") continue;
     if (sender !== null && m.s !== sender) continue;
-    if (mediaOnly && !MEDIA_KINDS.includes(m.kind)) continue;
-    view.push(i);
-    if (q && (haystack[i] ?? "").includes(q)) matches.push(i);
+    if (!scopeMatches(m.kind, i, scope)) continue;
+    if (q && !(haystack[i] ?? "").includes(q)) continue;
+    matches.push(i);
   }
-  const v = new Int32Array(view);
   const mt = new Int32Array(matches);
-  post({ type: "query", id, view: v, matches: mt }, [v.buffer, mt.buffer]);
+  post({ type: "query", id, matches: mt }, [mt.buffer]);
+}
+
+function remember(name: string, bytes: Uint8Array) {
+  if (bytes.byteLength > MEDIA_CACHE_BYTES / 3) return;
+  mediaCache.set(name, bytes);
+  mediaCacheBytes += bytes.byteLength;
+  while (mediaCacheBytes > MEDIA_CACHE_BYTES) {
+    const oldest = mediaCache.keys().next().value as string | undefined;
+    if (oldest === undefined) break;
+    mediaCacheBytes -= mediaCache.get(oldest)?.byteLength ?? 0;
+    mediaCache.delete(oldest);
+  }
 }
 
 function media(id: number, name: string) {
+  const cached = mediaCache.get(name);
+  if (cached) {
+    // refresh recency, then hand out a copy so the cache keeps its buffer
+    mediaCache.delete(name);
+    mediaCache.set(name, cached);
+    const copy = cached.slice();
+    post({ type: "media", id, bytes: copy, mime: mimeFromFileName(name) }, [copy.buffer]);
+    return;
+  }
   if (!archive) {
     post({ type: "media", id, error: "no archive" });
     return;
@@ -97,6 +165,7 @@ function media(id: number, name: string) {
       post({ type: "media", id, error: "not found" });
       return;
     }
+    remember(name, bytes);
     const copy = bytes.slice();
     post({ type: "media", id, bytes: copy, mime: mimeFromFileName(name) }, [copy.buffer]);
   } catch (e) {
@@ -109,7 +178,7 @@ self.onmessage = (e: MessageEvent) => {
   if (d.type === "load") {
     load(d.file).catch((err) => post({ type: "error", message: String(err?.message ?? err) }));
   } else if (d.type === "query") {
-    query(d.id, d.text, d.sender, d.mediaOnly);
+    query(d.id, d.text, d.sender, d.scope);
   } else if (d.type === "media") {
     media(d.id, d.name);
   }

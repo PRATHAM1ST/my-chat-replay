@@ -1,4 +1,4 @@
-import type { ParsedChat } from "./types";
+import type { ParsedChat, SearchScope } from "./types";
 
 type Pending = { resolve: (v: unknown) => void; reject: (e: unknown) => void };
 
@@ -7,7 +7,6 @@ export interface LoadHandlers {
 }
 
 export interface QueryResult {
-  view: Int32Array;
   matches: Int32Array;
 }
 
@@ -24,11 +23,19 @@ export class WaClient {
   private loadResolve: ((c: ParsedChat) => void) | null = null;
   private loadReject: ((e: unknown) => void) | null = null;
   private handlers: LoadHandlers | null = null;
+  private dead = false;
 
   // LRU of object URLs so media memory stays bounded
   private mediaCache = new Map<string, MediaResult>();
-  private mediaLimit = 60;
+  private mediaLimit = 80;
   private inflight = new Map<string, Promise<MediaResult>>();
+  /**
+   * Natural pixel size of every attachment we have decoded, so a row that
+   * scrolls back into view reserves the right height immediately instead of
+   * resizing once the picture decodes — that resize is what makes a virtual
+   * list jump.
+   */
+  private ratios = new Map<string, { w: number; h: number }>();
 
   constructor() {
     this.worker = new Worker(new URL("./worker.ts", import.meta.url), {
@@ -74,12 +81,21 @@ export class WaClient {
     });
   }
 
-  query(text: string, sender: number | null, mediaOnly: boolean): Promise<QueryResult> {
+  query(text: string, sender: number | null, scope: SearchScope): Promise<QueryResult> {
     const id = ++this.id;
     return new Promise((resolve, reject) => {
       this.pending.set(id, { resolve: resolve as (v: unknown) => void, reject });
-      this.worker.postMessage({ type: "query", id, text, sender, mediaOnly });
+      this.worker.postMessage({ type: "query", id, text, sender, scope });
     }) as Promise<QueryResult>;
+  }
+
+  /** Cached natural size of an attachment, once it has been decoded once. */
+  ratio(name: string | undefined) {
+    return name ? this.ratios.get(name) : undefined;
+  }
+
+  rememberRatio(name: string, w: number, h: number) {
+    if (w > 0 && h > 0) this.ratios.set(name, { w, h });
   }
 
   media(name: string): Promise<MediaResult> {
@@ -98,27 +114,38 @@ export class WaClient {
     const p = new Promise<any>((resolve, reject) => {
       this.pending.set(id, { resolve, reject });
       this.worker.postMessage({ type: "media", id, name });
-    }).then((d) => {
-      const blob = new Blob([d.bytes], { type: d.mime });
-      const res: MediaResult = { url: URL.createObjectURL(blob), mime: d.mime };
-      this.mediaCache.set(name, res);
-      while (this.mediaCache.size > this.mediaLimit) {
-        const oldest = this.mediaCache.keys().next().value as string | undefined;
-        if (!oldest) break;
-        const v = this.mediaCache.get(oldest);
-        this.mediaCache.delete(oldest);
-        if (v) URL.revokeObjectURL(v.url);
-      }
-      this.inflight.delete(name);
-      return res;
-    });
+    })
+      .then((d) => {
+        const blob = new Blob([d.bytes], { type: d.mime });
+        const res: MediaResult = { url: URL.createObjectURL(blob), mime: d.mime };
+        this.inflight.delete(name);
+        if (this.dead) {
+          URL.revokeObjectURL(res.url);
+          return res;
+        }
+        this.mediaCache.set(name, res);
+        while (this.mediaCache.size > this.mediaLimit) {
+          const oldest = this.mediaCache.keys().next().value as string | undefined;
+          if (oldest === undefined) break;
+          const v = this.mediaCache.get(oldest);
+          this.mediaCache.delete(oldest);
+          if (v) URL.revokeObjectURL(v.url);
+        }
+        return res;
+      })
+      .catch((e) => {
+        this.inflight.delete(name);
+        throw e;
+      });
     this.inflight.set(name, p);
     return p;
   }
 
   destroy() {
+    this.dead = true;
     for (const v of this.mediaCache.values()) URL.revokeObjectURL(v.url);
     this.mediaCache.clear();
+    this.ratios.clear();
     this.worker.terminate();
   }
 }

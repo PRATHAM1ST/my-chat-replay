@@ -76,7 +76,11 @@ export function parseChat(raw: string, opts: ParseOptions = {}): ParsedChat {
     }
 
     const ios = ATTACHED_IOS.exec(body);
-    const android = ios ? null : ATTACHED_ANDROID.exec(body.trim());
+    // Android writes the attachment on its own first line and puts the caption,
+    // if there is one, on the lines beneath it.
+    const firstBreak = body.indexOf("\n");
+    const headLine = (firstBreak === -1 ? body : body.slice(0, firstBreak)).trim();
+    const android = ios ? null : ATTACHED_ANDROID.exec(headLine);
     const rawName = ios?.[1] ?? android?.[1];
 
     if (rawName) {
@@ -84,7 +88,11 @@ export function parseChat(raw: string, opts: ParseOptions = {}): ParsedChat {
       const resolved = lookup.get((name.split("/").pop() ?? name).toLowerCase());
       file = resolved;
       kind = kindFromFileName(name);
-      body = ios ? body.replace(ATTACHED_IOS, "").trim() : "";
+      body = ios
+        ? body.replace(ATTACHED_IOS, "").trim()
+        : firstBreak === -1
+          ? ""
+          : body.slice(firstBreak + 1).trim();
       if (!resolved) label = name;
       mediaCount++;
     } else if (sender >= 0) {

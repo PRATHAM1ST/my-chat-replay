@@ -27,13 +27,25 @@ export interface ParsedChat {
   meIndex: number;
 }
 
+/** The chips in the search drawer, mirroring WhatsApp's own filter row. */
+export type SearchScope = "all" | "photos" | "videos" | "links" | "docs" | "audio";
+
 export interface QueryFilters {
   text: string;
   sender: number | null;
-  mediaOnly: boolean;
+  scope: SearchScope;
 }
 
 export const MEDIA_KINDS: MsgKind[] = ["image", "video", "audio", "sticker", "document"];
+
+export const SCOPE_KINDS: Record<Exclude<SearchScope, "all" | "links">, MsgKind[]> = {
+  photos: ["image", "sticker"],
+  videos: ["video"],
+  docs: ["document"],
+  audio: ["audio"],
+};
+
+export const LINK_RE = /(https?:\/\/[^\s<>()]+|www\.[^\s<>()]+)/gi;
 
 export function kindFromFileName(name: string): MsgKind {
   const ext = name.split(".").pop()?.toLowerCase() ?? "";

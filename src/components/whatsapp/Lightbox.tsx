@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, Download, X } from "lucide-react";
 import type { WaClient } from "@/lib/whatsapp/client";
 import type { Msg } from "@/lib/whatsapp/types";
 import { formatDay, formatTime } from "@/lib/whatsapp/format";
-import { Button } from "@/components/ui/button";
+import { Avatar } from "./ui";
 
 interface Props {
   items: Msg[];
@@ -12,6 +12,29 @@ interface Props {
   senders: string[];
   onIndex: (i: number) => void;
   onClose: () => void;
+}
+
+function GlassButton({
+  label,
+  onClick,
+  className = "",
+  children,
+}: {
+  label: string;
+  onClick: (e: React.MouseEvent) => void;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      className={`flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-full text-white/90 transition-colors hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 ${className}`}
+    >
+      {children}
+    </button>
+  );
 }
 
 /** Full-screen media carousel: arrows, keyboard and a filmstrip of neighbours. */
@@ -53,31 +76,26 @@ export function Lightbox({ items, index, client, senders, onIndex, onClose }: Pr
   }, [msg?.file, client]);
 
   if (index === null || !msg) return null;
-  const name = msg.s >= 0 ? senders[msg.s] : "";
+  const name = msg.s >= 0 ? (senders[msg.s] ?? "") : "";
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col bg-wa-panel-foreground/95"
+      className="wa-fade-in fixed inset-0 z-50 flex flex-col bg-[oklch(0.16_0.015_240_/_0.97)] backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
     >
-      <header className="flex h-[59px] shrink-0 items-center gap-3 px-3 text-wa-panel">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onClose}
-          aria-label="Close preview"
-          className="rounded-full text-wa-panel hover:bg-wa-panel/15"
-        >
+      <header className="flex h-[64px] shrink-0 items-center gap-3 px-3 text-white">
+        <GlassButton label="Close preview" onClick={onClose}>
           <X className="size-5" />
-        </Button>
+        </GlassButton>
+        <Avatar name={name || "?"} seed={msg.s < 0 ? 0 : msg.s} />
         <div className="min-w-0">
-          <p className="truncate text-sm">{name}</p>
-          <p className="truncate text-xs opacity-70">
+          <p className="truncate text-[14.5px]">{name || "Media"}</p>
+          <p className="truncate text-[12.5px] text-white/60">
             {formatDay(msg.ts)} at {formatTime(msg.ts)}
           </p>
         </div>
-        <span className="ml-auto text-xs opacity-70">
+        <span className="ml-auto shrink-0 text-[12.5px] tabular-nums text-white/60">
           {index + 1} / {items.length}
         </span>
         {url && (
@@ -85,7 +103,7 @@ export function Lightbox({ items, index, client, senders, onIndex, onClose }: Pr
             href={url}
             download={msg.file?.split("/").pop() ?? "attachment"}
             aria-label="Download"
-            className="flex size-9 items-center justify-center rounded-full text-wa-panel hover:bg-wa-panel/15"
+            className="flex size-10 shrink-0 items-center justify-center rounded-full text-white/90 transition-colors hover:bg-white/15"
           >
             <Download className="size-5" />
           </a>
@@ -93,33 +111,31 @@ export function Lightbox({ items, index, client, senders, onIndex, onClose }: Pr
       </header>
 
       <div
-        className="relative flex min-h-0 flex-1 items-center justify-center p-2"
+        className="relative flex min-h-0 flex-1 items-center justify-center p-3"
         onClick={onClose}
       >
         {items.length > 1 && (
-          <Button
-            variant="ghost"
-            size="icon"
+          <GlassButton
+            label="Previous media"
             onClick={(e) => {
               e.stopPropagation();
               go(-1);
             }}
-            aria-label="Previous media"
-            className="absolute left-2 z-10 rounded-full bg-wa-panel/10 text-wa-panel hover:bg-wa-panel/25"
+            className="absolute left-3 z-10 size-11 bg-white/10 backdrop-blur-sm"
           >
             <ChevronLeft className="size-6" />
-          </Button>
+          </GlassButton>
         )}
 
         {!url ? (
-          <div className="size-40 animate-pulse rounded bg-wa-panel/15" />
+          <div className="wa-media-skeleton size-48 rounded-xl" />
         ) : msg.kind === "video" ? (
           <video
             key={url}
             src={url}
             controls
             autoPlay
-            className="max-h-full max-w-full"
+            className="max-h-full max-w-full rounded-lg shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           />
         ) : (
@@ -127,29 +143,27 @@ export function Lightbox({ items, index, client, senders, onIndex, onClose }: Pr
             key={url}
             src={url}
             alt={msg.file ?? "attachment"}
-            className="max-h-full max-w-full object-contain"
+            className="wa-fade-in max-h-full max-w-full rounded-lg object-contain shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           />
         )}
 
         {items.length > 1 && (
-          <Button
-            variant="ghost"
-            size="icon"
+          <GlassButton
+            label="Next media"
             onClick={(e) => {
               e.stopPropagation();
               go(1);
             }}
-            aria-label="Next media"
-            className="absolute right-2 z-10 rounded-full bg-wa-panel/10 text-wa-panel hover:bg-wa-panel/25"
+            className="absolute right-3 z-10 size-11 bg-white/10 backdrop-blur-sm"
           >
             <ChevronRight className="size-6" />
-          </Button>
+          </GlassButton>
         )}
       </div>
 
       {items.length > 1 && (
-        <div className="flex shrink-0 items-center justify-center gap-1 overflow-x-auto px-3 py-3">
+        <div className="flex shrink-0 items-center justify-center gap-1.5 overflow-x-auto px-3 py-3">
           {items.slice(Math.max(0, index - 12), index + 13).map((m, k) => {
             const at = Math.max(0, index - 12) + k;
             return (
@@ -196,7 +210,11 @@ function Strip({
       type="button"
       onClick={onClick}
       aria-label="Open media"
-      className={`size-11 shrink-0 overflow-hidden rounded ${active ? "ring-2 ring-wa-green" : "opacity-60 hover:opacity-100"}`}
+      className={`size-12 shrink-0 cursor-pointer overflow-hidden rounded-md transition-all ${
+        active
+          ? "ring-2 ring-wa-green ring-offset-2 ring-offset-transparent"
+          : "opacity-50 hover:opacity-100"
+      }`}
     >
       {url ? (
         msg.kind === "video" ? (
@@ -205,7 +223,7 @@ function Strip({
           <img src={url} alt="" className="size-full object-cover" />
         )
       ) : (
-        <span className="block size-full bg-wa-panel/20" />
+        <span className="block size-full bg-white/10" />
       )}
     </button>
   );

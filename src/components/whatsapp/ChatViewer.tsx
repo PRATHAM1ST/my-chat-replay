@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { MessageSquare } from "lucide-react";
 import { WaClient } from "@/lib/whatsapp/client";
-import { lowerBound } from "@/lib/whatsapp/format";
-import type { Msg, ParsedChat } from "@/lib/whatsapp/types";
+import type { Msg, ParsedChat, SearchScope } from "@/lib/whatsapp/types";
 import {
   entryId,
   fileFromEntry,
@@ -21,7 +21,8 @@ import { ContactInfo } from "./ContactInfo";
 import { DropZone } from "./DropZone";
 import { Lightbox } from "./Lightbox";
 import { MessageList } from "./MessageList";
-import { SearchBar } from "./SearchBar";
+import { NavRail } from "./NavRail";
+import { SearchPanel } from "./SearchPanel";
 
 const EMPTY = new Int32Array(0);
 
@@ -39,13 +40,13 @@ export function ChatViewer() {
   const [query, setQuery] = useState("");
   const [debounced, setDebounced] = useState("");
   const [sender, setSender] = useState<number | null>(null);
-  const [mediaOnly, setMediaOnly] = useState(false);
+  const [scope, setScope] = useState<SearchScope>("all");
+  const [searching, setSearching] = useState(false);
 
-  const [view, setView] = useState<Int32Array>(EMPTY);
   const [matches, setMatches] = useState<Int32Array>(EMPTY);
   const [matchPos, setMatchPos] = useState(0);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
-  const [scrollTarget, setScrollTarget] = useState<{ row: number; nonce: number } | null>(null);
+  const [scrollTarget, setScrollTarget] = useState<{ index: number; nonce: number } | null>(null);
   const nonce = useRef(0);
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
   const [prefs, setPrefs] = useState<ChatPrefs>({});
@@ -84,6 +85,16 @@ export function ChatViewer() {
     return all;
   }, []);
 
+  const resetSearch = useCallback(() => {
+    setQuery("");
+    setDebounced("");
+    setSender(null);
+    setScope("all");
+    setMatches(EMPTY);
+    setMatchPos(0);
+    setActiveIndex(null);
+  }, []);
+
   const handleFile = useCallback(
     async (file: File, handle?: FileSystemFileHandle) => {
       setError(null);
@@ -105,6 +116,9 @@ export function ChatViewer() {
         }
         const id = entryId(file.name, file.size);
         const stored = getPrefs(id);
+        resetSearch();
+        setSearchOpen(false);
+        setInfoOpen(false);
         setPrefs(stored);
         setChat(parsed);
         setMobileChatOpen(true);
@@ -138,7 +152,7 @@ export function ChatViewer() {
       }
       setBusyId(null);
     },
-    [refreshLibrary],
+    [refreshLibrary, resetSearch],
   );
 
   const openEntry = useCallback(
@@ -196,26 +210,28 @@ export function ChatViewer() {
 
   // debounce search input
   useEffect(() => {
+    if (query === debounced) return;
+    setSearching(true);
     const t = setTimeout(() => setDebounced(query), 180);
     return () => clearTimeout(t);
-  }, [query]);
+  }, [query, debounced]);
 
-  // run the filter/search in the worker
+  // run the search in the worker; the transcript itself is never filtered
   useEffect(() => {
     const client = clientRef.current;
     if (!client || !chat) return;
     let alive = true;
-    client.query(debounced, sender, mediaOnly).then((r) => {
+    setSearching(true);
+    client.query(debounced, sender, scope).then((r) => {
       if (!alive) return;
-      setView(r.view);
+      setSearching(false);
       setMatches(r.matches);
       if (r.matches.length) {
-        const pos = r.matches.length - 1;
-        setMatchPos(pos);
-        const idx = r.matches[pos] ?? 0;
+        setMatchPos(0);
+        const idx = r.matches[0] ?? 0;
         setActiveIndex(idx);
         nonce.current++;
-        setScrollTarget({ row: lowerBound(r.view, idx), nonce: nonce.current });
+        setScrollTarget({ index: idx, nonce: nonce.current });
       } else {
         setMatchPos(0);
         setActiveIndex(null);
@@ -224,7 +240,7 @@ export function ChatViewer() {
     return () => {
       alive = false;
     };
-  }, [chat, debounced, sender, mediaOnly]);
+  }, [chat, debounced, sender, scope]);
 
   const matchSet = useMemo(() => new Set(Array.from(matches)), [matches]);
 
@@ -294,14 +310,11 @@ export function ChatViewer() {
     [persist, entries, activeId, refreshLibrary],
   );
 
-  const jumpTo = useCallback(
-    (globalIndex: number) => {
-      setActiveIndex(globalIndex);
-      nonce.current++;
-      setScrollTarget({ row: lowerBound(view, globalIndex), nonce: nonce.current });
-    },
-    [view],
-  );
+  const jumpTo = useCallback((globalIndex: number) => {
+    setActiveIndex(globalIndex);
+    nonce.current++;
+    setScrollTarget({ index: globalIndex, nonce: nonce.current });
+  }, []);
 
   const step = useCallback(
     (delta: number) => {
@@ -330,16 +343,11 @@ export function ChatViewer() {
     [chat, jumpTo],
   );
 
-  const closeChat = () => {
+  const closeChat = useCallback(() => {
     clientRef.current?.destroy();
     clientRef.current = null;
     setChat(null);
-    setView(EMPTY);
-    setMatches(EMPTY);
-    setQuery("");
-    setDebounced("");
-    setSender(null);
-    setMediaOnly(false);
+    resetSearch();
     setSearchOpen(false);
     setLightboxIdx(null);
     setPrefs({});
@@ -347,16 +355,44 @@ export function ChatViewer() {
     setMobileChatOpen(false);
     setActiveId(null);
     void refreshLibrary();
-  };
+  }, [refreshLibrary, resetSearch]);
+
+  const toggleSearch = useCallback(() => {
+    setSearchOpen((open) => {
+      if (open) resetSearch();
+      else setInfoOpen(false);
+      return !open;
+    });
+  }, [resetSearch]);
+
+  const openInfo = useCallback(() => {
+    setSearchOpen(false);
+    setInfoOpen(true);
+  }, []);
+
+  // ⌘/Ctrl+F opens the in-chat search, like the desktop app
+  useEffect(() => {
+    if (!chat) return;
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "f") {
+        e.preventDefault();
+        setInfoOpen(false);
+        setSearchOpen(true);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [chat]);
 
   if (!entries.length && !chat) {
     return <DropZone onFile={handleFile} busy={busy} phase={phase} pct={pct} error={error} />;
   }
 
   const client = clientRef.current;
+  const hasChat = !!chat && !!client;
 
   return (
-    <main className="relative flex h-[100dvh] overflow-hidden bg-wa-chat">
+    <main className="relative flex h-[100dvh] overflow-hidden bg-wa-app">
       <input
         ref={fallbackInput}
         type="file"
@@ -368,6 +404,18 @@ export function ChatViewer() {
           event.target.value = "";
         }}
       />
+
+      <NavRail
+        hasChat={hasChat}
+        searchOpen={searchOpen}
+        infoOpen={infoOpen}
+        dark={dark}
+        onSearch={toggleSearch}
+        onInfo={() => (infoOpen ? setInfoOpen(false) : openInfo())}
+        onAdd={() => void addArchive()}
+        onToggleDark={() => setDark((v) => !v)}
+      />
+
       <div
         className={`${mobileChatOpen ? "hidden" : "flex"} h-full w-full shrink-0 md:flex md:w-auto`}
       >
@@ -396,31 +444,15 @@ export function ChatViewer() {
               onMeChange={changeMe}
               onSwap={swapSides}
               searchOpen={searchOpen}
-              onToggleSearch={() => setSearchOpen((v) => !v)}
-              onBack={closeChat}
-              onOpenInfo={() => setInfoOpen(true)}
+              onToggleSearch={toggleSearch}
+              onBack={() => setMobileChatOpen(false)}
+              onOpenInfo={openInfo}
+              onCloseChat={closeChat}
             />
 
-            {searchOpen && (
-              <SearchBar
-                query={query}
-                onQuery={setQuery}
-                matchCount={matches.length}
-                matchPos={matchPos}
-                onPrev={() => step(-1)}
-                onNext={() => step(1)}
-                senders={senderNames}
-                sender={sender}
-                onSender={setSender}
-                mediaOnly={mediaOnly}
-                onMediaOnly={setMediaOnly}
-                onJumpDate={jumpDate}
-              />
-            )}
-
             <MessageList
+              key={activeId ?? "chat"}
               messages={chat.messages}
-              view={view}
               senders={senderNames}
               meIndex={meIndex}
               client={client}
@@ -432,14 +464,43 @@ export function ChatViewer() {
             />
           </>
         ) : (
-          <div className="flex flex-1 items-center justify-center px-6 text-center">
-            <div>
-              <h2 className="text-3xl font-light text-wa-panel-foreground">Chat Replay</h2>
-              <p className="mt-3 text-sm text-wa-meta">Select a chat from your local library</p>
+          <div className="wa-doodle flex flex-1 items-center justify-center px-6 text-center">
+            <div className="relative z-10 max-w-sm">
+              <span className="mx-auto flex size-16 items-center justify-center rounded-2xl bg-wa-surface text-wa-meta shadow-[var(--wa-shadow-panel)]">
+                <MessageSquare className="size-8" />
+              </span>
+              <h2 className="mt-5 text-[26px] font-light text-wa-panel-foreground">Chat Replay</h2>
+              <p className="mt-2 text-[14px] text-wa-meta">
+                Pick a chat on the left, or open another export. Everything stays on this device.
+              </p>
             </div>
           </div>
         )}
       </section>
+
+      {searchOpen && chat && client && (
+        <SearchPanel
+          messages={chat.messages}
+          senders={senderNames}
+          query={query}
+          onQuery={setQuery}
+          scope={scope}
+          onScope={setScope}
+          sender={sender}
+          onSender={setSender}
+          matches={matches}
+          matchPos={matchPos}
+          onPrev={() => step(-1)}
+          onNext={() => step(1)}
+          onPick={(globalIndex, pos) => {
+            setMatchPos(pos);
+            jumpTo(globalIndex);
+          }}
+          onJumpDate={jumpDate}
+          onClose={toggleSearch}
+          busy={searching}
+        />
+      )}
 
       {infoOpen && chat && client && (
         <ContactInfo

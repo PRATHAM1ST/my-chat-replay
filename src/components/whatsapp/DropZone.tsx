@@ -1,7 +1,6 @@
 import { useCallback, useRef, useState } from "react";
-import { Upload, LockKeyhole } from "lucide-react";
+import { FileArchive, LockKeyhole, MessageSquare, Search, Sparkles, Upload } from "lucide-react";
 import { pickArchive, supportsHandles, type LibraryEntry } from "@/lib/whatsapp/library";
-import { Button } from "@/components/ui/button";
 
 interface Props {
   onFile: (file: File, handle?: FileSystemFileHandle) => void;
@@ -11,6 +10,12 @@ interface Props {
   error: string | null;
   entries?: LibraryEntry[];
 }
+
+const POINTS = [
+  { icon: MessageSquare, text: "Reads like the real thing — bubbles, days, ticks and all" },
+  { icon: Search, text: "Search every message, photo, link and document" },
+  { icon: Sparkles, text: "Handles hundreds of megabytes without breaking a sweat" },
+];
 
 export function DropZone({ onFile, busy, phase, pct, error }: Props) {
   const [over, setOver] = useState(false);
@@ -36,13 +41,19 @@ export function DropZone({ onFile, busy, phase, pct, error }: Props) {
   }, [busy, onFile]);
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-wa-chat px-5 py-12">
-      <div className="w-full max-w-md text-center">
-        <span className="mx-auto flex size-20 items-center justify-center rounded-full bg-wa-teal text-wa-out-foreground">
-          <Upload className="size-8" />
-        </span>
-        <h1 className="mt-6 text-2xl font-light text-wa-panel-foreground">Open a chat export</h1>
-        <p className="mt-2 text-sm text-wa-meta">Choose a WhatsApp ZIP or text file</p>
+    <main className="wa-doodle flex min-h-[100dvh] flex-col items-center justify-center px-5 py-12">
+      <div className="relative z-10 w-full max-w-[440px]">
+        <div className="text-center">
+          <span className="mx-auto flex size-16 items-center justify-center rounded-2xl bg-wa-green text-white shadow-[var(--wa-shadow-float)]">
+            <MessageSquare className="size-8" />
+          </span>
+          <h1 className="mt-5 text-[28px] font-light leading-tight text-wa-panel-foreground">
+            Chat Replay
+          </h1>
+          <p className="mt-2 text-[14.5px] text-wa-meta">
+            Open a WhatsApp export and read it back as a real chat.
+          </p>
+        </div>
 
         <div
           onDragOver={(e) => {
@@ -56,8 +67,13 @@ export function DropZone({ onFile, busy, phase, pct, error }: Props) {
             pick(e.dataTransfer.files);
           }}
           onClick={browse}
-          className={`mt-8 cursor-pointer rounded-lg border-2 border-dashed bg-wa-in p-8 text-center transition-colors ${
-            over ? "border-wa-green bg-wa-out/40" : "border-wa-divider"
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") void browse();
+          }}
+          className={`mt-7 cursor-pointer rounded-2xl border-2 border-dashed bg-wa-surface p-8 text-center shadow-[var(--wa-shadow-panel)] transition-colors ${
+            over ? "border-wa-green bg-wa-green/5" : "border-wa-divider hover:border-wa-green/60"
           }`}
         >
           <input
@@ -67,10 +83,13 @@ export function DropZone({ onFile, busy, phase, pct, error }: Props) {
             className="hidden"
             onChange={(e) => pick(e.target.files)}
           />
-          <p className="font-medium text-wa-in-foreground">
-            {busy ? phase : "Drop your WhatsApp export .zip here"}
+          <span className="mx-auto flex size-12 items-center justify-center rounded-full bg-wa-green/12 text-wa-teal dark:text-wa-green">
+            {busy ? <FileArchive className="size-6" /> : <Upload className="size-6" />}
+          </span>
+          <p className="mt-3 text-[15px] font-medium text-wa-panel-foreground">
+            {busy ? phase : "Drop your export .zip here"}
           </p>
-          <p className="mt-1 text-sm text-wa-meta">
+          <p className="mt-1 text-[13.5px] text-wa-meta">
             {busy ? `${Math.round(pct * 100)}%` : "or click to browse — .zip or _chat.txt"}
           </p>
 
@@ -85,13 +104,24 @@ export function DropZone({ onFile, busy, phase, pct, error }: Props) {
         </div>
 
         {error && (
-          <p className="mt-4 rounded-lg bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          <p className="mt-4 rounded-xl bg-destructive/10 px-4 py-3 text-[13.5px] text-destructive">
             {error}
           </p>
         )}
 
-        <p className="mt-6 flex items-center justify-center gap-2 text-xs text-wa-meta">
-          <LockKeyhole className="size-3.5" /> Your files stay on this device
+        <ul className="mt-7 space-y-2.5">
+          {POINTS.map(({ icon: Icon, text }) => (
+            <li key={text} className="flex items-center gap-3 text-[13.5px] text-wa-meta">
+              <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-wa-surface text-wa-teal shadow-[var(--wa-shadow-bubble)] dark:text-wa-green">
+                <Icon className="size-3.5" />
+              </span>
+              {text}
+            </li>
+          ))}
+        </ul>
+
+        <p className="mt-7 flex items-center justify-center gap-2 text-[12.5px] text-wa-meta">
+          <LockKeyhole className="size-3.5" /> Nothing is uploaded — your files stay on this device
         </p>
       </div>
     </main>
