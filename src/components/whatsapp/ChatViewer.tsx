@@ -544,6 +544,8 @@ export function ChatViewer() {
         onIndex={setLightboxIdx}
         onClose={() => setLightboxIdx(null)}
       />
+
+      <PwaInstallPrompt />
     </main>
   );
 }
