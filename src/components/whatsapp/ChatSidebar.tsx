@@ -200,10 +200,11 @@ export function ChatSidebar({
                     </span>
                   </button>
                   <IconButton
-                    onClick={() => onRemove(entry)}
-                    aria-label={`Remove ${title}`}
+                    onClick={() => setConfirm(entry)}
+                    aria-label={`Remove ${title} from this app`}
                     className="absolute right-2 top-1/2 size-8 -translate-y-1/2 bg-wa-surface/90 text-wa-meta opacity-0 backdrop-blur-sm hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100"
                   >
+
                     <Trash2 className="size-4" />
                   </IconButton>
                 </li>
