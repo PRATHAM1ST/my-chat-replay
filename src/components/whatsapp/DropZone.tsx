@@ -1,6 +1,8 @@
 import { useCallback, useRef, useState } from "react";
 import { FileArchive, LockKeyhole, MessageSquare, Search, Sparkles, Upload } from "lucide-react";
 import { pickArchive, supportsHandles, type LibraryEntry } from "@/lib/whatsapp/library";
+import { Logo } from "./Logo";
+
 
 interface Props {
   onFile: (file: File, handle?: FileSystemFileHandle) => void;
@@ -44,9 +46,10 @@ export function DropZone({ onFile, busy, phase, pct, error }: Props) {
     <main className="wa-doodle flex min-h-[100dvh] flex-col items-center justify-center px-5 py-12">
       <div className="relative z-10 w-full max-w-[440px]">
         <div className="text-center">
-          <span className="mx-auto flex size-16 items-center justify-center rounded-2xl bg-wa-green text-white shadow-[var(--wa-shadow-float)]">
-            <MessageSquare className="size-8" />
+          <span className="mx-auto flex size-16 items-center justify-center rounded-2xl bg-wa-surface shadow-[var(--wa-shadow-float)]">
+            <Logo size={44} />
           </span>
+
           <h1 className="mt-5 text-[28px] font-light leading-tight text-wa-panel-foreground">
             Chat Replay
           </h1>
