@@ -195,6 +195,8 @@ export class WaClient {
     for (const p of this.pending.values()) p.reject(gone);
     this.pending.clear();
     this.inflight.clear();
+    this.queue = [];
+
     for (const v of this.mediaCache.values()) URL.revokeObjectURL(v.url);
     this.mediaCache.clear();
     this.ratios.clear();
