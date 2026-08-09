@@ -18,8 +18,7 @@ function blocked(): boolean {
   for (const base of ["lovableproject.com", "lovableproject-dev.com", "beta.lovable.dev"]) {
     if (h === base || h.endsWith(`.${base}`)) return true;
   }
-  if (new URLSearchParams(window.location.search).has("sw=off")) return true;
-  return new URL(window.location.href).searchParams.get("sw") === "off";
+  return new URLSearchParams(window.location.search).get("sw") === "off";
 }
 
 async function unregisterShareWorker(): Promise<void> {
