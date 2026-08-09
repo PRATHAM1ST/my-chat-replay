@@ -104,7 +104,10 @@ export function MessageList({
   activeIndex,
   scrollTarget,
   onOpenMedia,
+  restore,
+  onPosition,
 }: Props) {
+
   const parentRef = useRef<HTMLDivElement>(null);
   const [atBottom, setAtBottom] = useState(true);
   const [topDay, setTopDay] = useState<string | null>(null);
