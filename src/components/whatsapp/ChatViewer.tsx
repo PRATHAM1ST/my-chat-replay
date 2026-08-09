@@ -403,8 +403,14 @@ export function ChatViewer() {
   }, [chat]);
 
   if (!entries.length && !chat) {
-    return <DropZone onFile={handleFile} busy={busy} phase={phase} pct={pct} error={error} />;
+    return (
+      <>
+        <DropZone onFile={handleFile} busy={busy} phase={phase} pct={pct} error={error} />
+        <PwaInstallPrompt />
+      </>
+    );
   }
+
 
   const client = clientRef.current;
   const hasChat = !!chat && !!client;
