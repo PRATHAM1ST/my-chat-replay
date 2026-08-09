@@ -132,9 +132,6 @@ export function ChatSidebar({
               )}
             </MenuContent>
           </Menu>
-
-            </MenuContent>
-          </Menu>
         </div>
       </header>
 
