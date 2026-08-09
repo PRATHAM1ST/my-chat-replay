@@ -100,6 +100,7 @@ function ChatRow({
         onClick={() => (selecting ? onSelect() : onOpen())}
         disabled={busy && !selecting}
         aria-pressed={selecting ? selected : undefined}
+        style={{ WebkitTouchCallout: "none", touchAction: "pan-y" }}
         className={`flex w-full cursor-pointer select-none items-center gap-3 pl-3 pr-2 text-left transition-colors disabled:cursor-default ${
           selected ? "bg-wa-green/12" : active && !selecting ? "bg-wa-active" : "hover:bg-wa-hover"
         }`}
