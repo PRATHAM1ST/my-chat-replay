@@ -16,6 +16,7 @@ import {
 } from "@/lib/whatsapp/library";
 import { displayNames, getPrefs, savePrefs, type ChatPrefs } from "@/lib/whatsapp/prefs";
 import { onLaunchWithFile } from "@/lib/whatsapp/launch";
+import { registerShareTarget, takeSharedFile } from "@/lib/whatsapp/share";
 
 import { ChatHeader } from "./ChatHeader";
 import { ChatSidebar } from "./ChatSidebar";
@@ -213,6 +214,14 @@ export function ChatViewer() {
   // Installed app: the OS may launch us with an archive ("Open with Chat Replay").
   useEffect(() => {
     onLaunchWithFile((file, handle) => void handleFile(file, handle));
+  }, [handleFile]);
+
+  // Installed app: an archive shared to us via the Android share sheet.
+  useEffect(() => {
+    registerShareTarget();
+    void takeSharedFile().then((file) => {
+      if (file) void handleFile(file);
+    });
   }, [handleFile]);
 
   // debounce search input
