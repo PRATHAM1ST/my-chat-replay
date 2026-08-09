@@ -199,6 +199,7 @@ export const MediaAttachment = memo(function MediaAttachment({ msg, client, isMe
             alt={label}
             loading="lazy"
             decoding="async"
+            onError={retry}
             className="size-full object-contain"
           />
         ) : (
@@ -226,6 +227,7 @@ export const MediaAttachment = memo(function MediaAttachment({ msg, client, isMe
               preload="metadata"
               muted
               playsInline
+              onError={retry}
               onLoadedMetadata={(e) =>
                 remember(e.currentTarget.videoWidth, e.currentTarget.videoHeight)
               }
@@ -237,11 +239,14 @@ export const MediaAttachment = memo(function MediaAttachment({ msg, client, isMe
               alt={label}
               loading="lazy"
               decoding="async"
+              onError={retry}
               onLoad={(e) => remember(e.currentTarget.naturalWidth, e.currentTarget.naturalHeight)}
               className="wa-fade-in size-full object-cover"
             />
           )
         ) : (
+          <span className="wa-media-skeleton absolute inset-0 block" />
+
           <span className="wa-media-skeleton absolute inset-0 block" />
         )}
 
