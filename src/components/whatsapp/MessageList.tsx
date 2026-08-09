@@ -236,18 +236,41 @@ export function MessageList({
     return () => cancelAnimationFrame(id);
   }, [scrollTarget, virtualizer]);
 
-  // Sticky day chip + "jump to latest" state, sampled from the scroll element
-  // rather than from React state so scrolling stays render-free.
+  // Sticky day chip, "jump to latest" state and the remembered reading
+  // position, all sampled from the scroll element rather than from React state
+  // so scrolling stays render-free. Saving is debounced and flushed on unmount
+  // (closing a chat) and when the tab goes away.
+  const positionRef = useRef(onPosition);
+  positionRef.current = onPosition;
   useEffect(() => {
     const el = parentRef.current;
     if (!el) return;
     let frame = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let pending: ScrollPosition | null = null;
+
+    const flush = () => {
+      if (timer) clearTimeout(timer);
+      timer = undefined;
+      if (pending) positionRef.current?.(pending);
+      pending = null;
+    };
+
     const sample = () => {
       frame = 0;
       const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
-      setAtBottom(distance < 120);
+      const bottom = distance < 120;
+      setAtBottom(bottom);
       const first = virtualizer.getVirtualItemForOffset(el.scrollTop + 12);
       const msg = first ? messages[first.index] : undefined;
+      if (first) {
+        pending = {
+          index: first.index,
+          offset: Math.round(el.scrollTop - first.start),
+          atBottom: bottom,
+        };
+        if (!timer) timer = setTimeout(flush, 400);
+      }
       if (!first || !msg) {
         setTopDay(null);
         return;
@@ -262,13 +285,22 @@ export function MessageList({
     const onScroll = () => {
       if (!frame) frame = requestAnimationFrame(sample);
     };
+    const onHide = () => {
+      if (document.visibilityState === "hidden") flush();
+    };
     sample();
     el.addEventListener("scroll", onScroll, { passive: true });
+    document.addEventListener("visibilitychange", onHide);
+    window.addEventListener("pagehide", flush);
     return () => {
       el.removeEventListener("scroll", onScroll);
+      document.removeEventListener("visibilitychange", onHide);
+      window.removeEventListener("pagehide", flush);
       if (frame) cancelAnimationFrame(frame);
+      flush();
     };
   }, [messages, virtualizer]);
+
 
   return (
     <div className="wa-doodle relative flex min-h-0 flex-1">
