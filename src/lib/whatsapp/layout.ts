@@ -9,9 +9,10 @@
  */
 import type { Msg } from "./types";
 
-/** WhatsApp Web caps picture bubbles at roughly this box. */
-export const MEDIA_MAX_W = 330;
-export const MEDIA_MAX_H = 400;
+/** WhatsApp caps picture bubbles at roughly this box (measured on Android —
+ * portrait phone screenshots render about 290x600, not letterboxed). */
+export const MEDIA_MAX_W = 300;
+export const MEDIA_MAX_H = 640;
 export const MEDIA_MIN_W = 140;
 /** Slot reserved before the real aspect ratio is known. */
 export const MEDIA_FALLBACK = { w: 260, h: 200 };
@@ -35,9 +36,10 @@ export function mediaBox(ratio: Ratio | undefined): Ratio {
 const LINE = 19; // text line-height
 const STAMP = 15; // timestamp line-height
 const NAME = 20; // group participant name line + its margin
-const PAD_Y = 12; // bubble padding, top + bottom
+const PAD_Y = 10; // bubble padding, top + bottom
 const GAP = 2; // py-[1px] between bubbles
-const DAY_CHIP = 44;
+const GROUP_GAP = 8; // extra room WhatsApp leaves when the sender changes
+const DAY_CHIP = 47;
 const STICKER = 130;
 /** Average advance width of the UI font at the 14.2px bubble size. */
 const GLYPH = 7.05;
@@ -46,13 +48,13 @@ const STAMP_W = 62;
 
 /**
  * How many characters fit on one line of the widest bubble at this pane width.
- * Derived from the same Tailwind classes MessageBubble uses: the row reserves
- * 6–7% padding a side and the bubble caps at 85% (narrow) / 65% (wide) of what
- * is left.
+ * Derived from the same Tailwind classes MessageBubble uses: phones get the
+ * app's fixed 17px gutters, wide panes reserve 7% a side like WhatsApp Web,
+ * and the bubble caps at 85% (narrow) / 65% (wide) of what is left.
  */
 export function charsPerLine(paneWidth: number) {
   if (!paneWidth) return 46;
-  const inner = paneWidth * 0.86;
+  const inner = paneWidth < 768 ? paneWidth - 34 : paneWidth * 0.86;
   const bubble = inner * (paneWidth < 640 ? 0.85 : 0.65) - 18;
   return Math.max(14, Math.floor(bubble / GLYPH));
 }
@@ -80,13 +82,19 @@ export interface RowShape {
   quoted?: boolean;
   /** a reaction pill hangs off the bubble's bottom edge */
   reacted?: boolean;
+  /** first bubble of a new sender group on the same day — gets breathing room */
+  grouped?: boolean;
 }
 
 /** Height guess for one transcript row, day divider included. */
 export function estimateRow(msg: Msg | undefined, shape: RowShape): number {
   if (!msg) return 64;
   const base =
-    (shape.newDay ? DAY_CHIP : 0) + GAP + (shape.quoted ? 50 : 0) + (shape.reacted ? 18 : 0);
+    (shape.newDay ? DAY_CHIP : 0) +
+    GAP +
+    (shape.quoted ? 50 : 0) +
+    (shape.reacted ? 20 : 0) +
+    (shape.grouped && !shape.newDay ? GROUP_GAP : 0);
   if (msg.kind === "system") return base + 36;
 
   const name = shape.showName ? NAME : 0;
@@ -108,7 +116,8 @@ export function estimateRow(msg: Msg | undefined, shape: RowShape): number {
     case "document":
       return base + name + 52 + PAD_Y + STAMP;
     default: {
-      if (EMOJI_ONLY.test(msg.text)) return base + 62;
+      // emoji-only messages sit in a normal bubble with larger glyphs
+      if (EMOJI_ONLY.test(msg.text)) return base + name + PAD_Y + 36;
       const lines = wrappedLines(msg.text, shape.cpl);
       // the stamp shares the last line only when there is room left for it
       const tail = msg.text.length - (lines - 1) * shape.cpl;

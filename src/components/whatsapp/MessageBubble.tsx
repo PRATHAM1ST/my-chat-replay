@@ -34,6 +34,8 @@ interface Props {
   isActive: boolean;
   /** first bubble of a sender group — gets the corner tail */
   tail: boolean;
+  /** new sender group mid-day — WhatsApp opens the gap up before it */
+  spaced: boolean;
   isStarred: boolean;
   onToggleStar: (index: number) => void;
   /** the emoji the user attached to this message, if any */
@@ -230,12 +232,12 @@ function QuoteBlock({
         e.stopPropagation();
         onJump(quoted.index);
       }}
-      className={`relative block w-full min-w-40 cursor-pointer overflow-hidden rounded-[6px] bg-black/[0.05] text-left transition-colors hover:bg-black/[0.08] dark:bg-white/[0.06] dark:hover:bg-white/[0.09] ${
-        mediaCard ? "mb-[3px]" : "mb-1"
+      className={`relative block cursor-pointer overflow-hidden rounded-[8px] bg-black/[0.06] text-left transition-colors hover:bg-black/[0.09] dark:bg-black/[0.22] dark:hover:bg-black/[0.3] ${
+        mediaCard ? "mb-[3px] w-full min-w-40" : "-mx-1 mb-1 w-[calc(100%+8px)] min-w-[168px]"
       }`}
     >
       <span className="absolute inset-y-0 left-0 w-[4px]" style={{ background: quoted.color }} />
-      <span className="block py-[5px] pl-2.5 pr-2">
+      <span className="block py-[6px] pl-2.5 pr-2">
         <span
           className="block truncate text-[12.8px] font-medium leading-[17px]"
           style={{ color: quoted.color }}
@@ -385,6 +387,7 @@ export const MessageBubble = memo(function MessageBubble({
   isMatch,
   isActive,
   tail,
+  spaced,
   isStarred,
   onToggleStar,
   reaction,
@@ -418,7 +421,7 @@ export const MessageBubble = memo(function MessageBubble({
     return (
       <div className="flex justify-center px-4 py-1.5">
         <p
-          className={`max-w-[85%] rounded-[7.5px] px-3 py-[6px] text-center text-[12.5px] leading-[17px] shadow-[var(--wa-shadow-bubble)] sm:max-w-md ${
+          className={`max-w-[85%] rounded-[10px] px-3 py-[6px] text-center text-[12.5px] leading-[17px] shadow-[var(--wa-shadow-bubble)] sm:max-w-md ${
             e2e ? "bg-wa-e2e text-wa-e2e-foreground" : "bg-wa-system text-wa-system-foreground"
           }`}
         >
@@ -436,27 +439,27 @@ export const MessageBubble = memo(function MessageBubble({
   /* Pictures and stickers put the stamp on top of the artwork when there is no
      caption, exactly like the app does. */
   const overlayStamp = mediaCard && !msg.text;
-  const bare = !!big || sticker;
+  /* Only stickers render without a bubble; emoji-only messages keep theirs. */
+  const bare = sticker && !msg.text;
 
   return (
     <div
-      className={`flex px-[6%] py-[1px] md:px-[7%] ${isMe ? "justify-end" : "justify-start"} ${
-        reaction ? "pb-[18px]" : ""
-      }`}
+      className={`flex px-[17px] py-[1px] md:px-[7%] ${isMe ? "justify-end" : "justify-start"} ${
+        reaction ? "pb-5" : ""
+      } ${spaced ? "mt-2" : ""}`}
     >
       <div
         {...hold}
         className={[
           "wa-bubble group/bubble relative max-w-[85%] sm:max-w-[65%]",
           bare
-            ? "wa-emoji-transparent overflow-visible"
+            ? "overflow-visible bg-transparent shadow-none"
             : isMe
               ? "bg-wa-out text-wa-out-foreground"
               : "bg-wa-in text-wa-in-foreground",
           !bare && tail ? (isMe ? "wa-bubble-tail-out" : "wa-bubble-tail-in") : "",
           isActive ? "wa-bubble-active" : "",
-          mediaCard ? "p-[3px]" : "px-[9px] py-[6px]",
-          bare ? "shadow-none" : "",
+          mediaCard ? "p-[3px]" : "px-[9px] py-[5px]",
         ]
           .filter(Boolean)
           .join(" ")}
@@ -518,7 +521,7 @@ export const MessageBubble = memo(function MessageBubble({
           </MenuContent>
         </Menu>
 
-        {showName && !isMe && !big && (
+        {showName && !isMe && (
           <p
             className={`${mediaCard ? "px-1.5 pt-1" : ""} mb-[3px] truncate text-[12.8px] font-medium leading-[17px]`}
             style={{ color: `var(--wa-name-${colorIdx})` }}
@@ -530,7 +533,7 @@ export const MessageBubble = memo(function MessageBubble({
         {quoted && <QuoteBlock quoted={quoted} mediaCard={mediaCard} onJump={onQuoteJump} />}
 
         {hasMedia && (
-          <div className={mediaCard ? "relative overflow-hidden rounded-[6px]" : "mb-1"}>
+          <div className={mediaCard ? "relative overflow-hidden rounded-[9px]" : "mb-1"}>
             <MediaAttachment msg={msg} client={client} isMe={isMe} onOpen={onOpenMedia} />
             {overlayStamp && !sticker && (
               <span className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-end bg-gradient-to-t from-black/45 to-transparent px-2 pb-1 pt-6 text-[11px] leading-[15px] text-white">
@@ -570,13 +573,7 @@ export const MessageBubble = memo(function MessageBubble({
                 Message not included in export
               </p>
             )}
-            <span
-              className={`ml-auto flex shrink-0 items-center gap-[3px] self-end pl-1 text-[11px] leading-[15px] text-wa-meta ${
-                bare
-                  ? "rounded-full bg-wa-in/85 px-1.5 py-0.5 shadow-[var(--wa-shadow-bubble)] backdrop-blur-sm"
-                  : ""
-              }`}
-            >
+            <span className="ml-auto flex shrink-0 items-center gap-[4px] self-end pl-1.5 text-[11px] leading-[15px] text-wa-meta">
               {isStarred && <StarMark />}
               {msg.edited && <span>Edited</span>}
               {formatTime(msg.ts)}
@@ -603,11 +600,11 @@ export const MessageBubble = memo(function MessageBubble({
               e.stopPropagation();
               onReact(msg.i, null);
             }}
-            className={`absolute -bottom-[15px] z-[5] flex cursor-pointer items-center rounded-full border-2 border-wa-chat bg-wa-in px-[6px] py-px shadow-[var(--wa-shadow-bubble)] transition-transform hover:scale-110 ${
-              isMe ? "right-1" : "left-1"
+            className={`absolute -bottom-[16px] z-[5] flex cursor-pointer items-center rounded-full border-2 border-wa-chat bg-wa-in px-[7px] py-[2px] shadow-[var(--wa-shadow-bubble)] transition-transform hover:scale-110 ${
+              isMe ? "right-2" : "left-2"
             }`}
           >
-            <span className="wa-emoji text-[13px] leading-[17px]">{reaction}</span>
+            <span className="wa-emoji text-[15px] leading-[19px]">{reaction}</span>
           </button>
         )}
       </div>

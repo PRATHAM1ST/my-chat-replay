@@ -59,7 +59,7 @@ export function ChatHeader({
       >
         <Avatar name={chatName} seed={chatName.length} />
         <span className="min-w-0">
-          <span className="block truncate text-[16px] font-normal leading-[21px]">
+          <span className="block truncate text-[17px] font-medium leading-[22px]">
             <Emoji text={chatName} />
           </span>
           <span className="block truncate text-[13px] leading-[17px] text-wa-meta">

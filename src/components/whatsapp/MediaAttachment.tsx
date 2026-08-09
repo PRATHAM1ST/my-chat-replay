@@ -194,7 +194,7 @@ export const MediaAttachment = memo(function MediaAttachment({ msg, client, isMe
         type="button"
         onClick={() => url && onOpen(msg, url)}
         aria-label="Open sticker"
-        className="block size-[130px] rounded-[6px] transition-opacity hover:opacity-90"
+        className="block size-[130px] rounded-[9px] transition-opacity hover:opacity-90"
       >
         {url ? (
           <img
@@ -206,7 +206,7 @@ export const MediaAttachment = memo(function MediaAttachment({ msg, client, isMe
             className="size-full object-contain"
           />
         ) : (
-          <span className="wa-media-skeleton block size-full rounded-[6px]" />
+          <span className="wa-media-skeleton block size-full rounded-[9px]" />
         )}
       </button>
     );
@@ -221,7 +221,7 @@ export const MediaAttachment = memo(function MediaAttachment({ msg, client, isMe
         onClick={() => url && onOpen(msg, url)}
         aria-label={video ? "Play video" : "Open photo"}
         style={{ width: w, aspectRatio: `${w} / ${h}` }}
-        className="group relative block max-w-full overflow-hidden rounded-[6px] bg-black/5 dark:bg-white/5"
+        className="group relative block max-w-full overflow-hidden rounded-[9px] bg-black/5 dark:bg-white/5"
       >
         {url ? (
           video ? (

@@ -105,7 +105,7 @@ const Row = memo(function Row({
   return (
     <>
       {newDay && (
-        <div className="flex justify-center py-3">
+        <div className="flex justify-center py-2.5">
           <DayChip label={formatDay(msg.ts)} />
         </div>
       )}
@@ -128,6 +128,7 @@ const Row = memo(function Row({
         onStartReplyLink={onStartReplyLink}
         onRemoveReplyLink={onRemoveReplyLink}
         tail={newGroup}
+        spaced={!newDay && newGroup && msg.kind !== "system"}
         client={client}
         onOpenMedia={onOpenMedia}
       />
@@ -188,6 +189,7 @@ export function MessageList({
         ratio: client.ratio(msg?.file),
         quoted: !!msg && replies.has(msg.i),
         reacted: !!msg && reactions.has(msg.i),
+        grouped: !!msg && msg.kind !== "system" && (!prev || prev.s !== msg.s),
       });
     },
     [messages, client, cpl, group, replies, reactions],

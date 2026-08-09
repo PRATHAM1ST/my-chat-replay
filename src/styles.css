@@ -413,12 +413,13 @@
 }
 
 /* ---------- bubbles --------------------------------------------------------
- * WhatsApp Web geometry: 7.5px radius, square corner on the tail side, and an
- * 8x13 tail drawn with a clip-path so it inherits the bubble colour.
+ * WhatsApp Android geometry, measured off real screenshots: 12px radius,
+ * square corner on the tail side, and an 8x13 tail drawn with a clip-path so
+ * it inherits the bubble colour.
  * ------------------------------------------------------------------------ */
 .wa-bubble {
   position: relative;
-  border-radius: 7.5px;
+  border-radius: 12px;
   box-shadow: var(--wa-shadow-bubble);
 }
 .wa-bubble-tail-in {
@@ -473,25 +474,17 @@
   font-variant-emoji: emoji;
   line-height: 1;
 }
-/* Emoji-only messages render large and without a bubble, exactly like the app */
+/* Emoji-only messages keep their bubble but get larger glyphs, like Android */
 .wa-emoji-only,
 .wa-emoji-only-md {
   font-variant-emoji: emoji;
-  line-height: 1.2;
+  line-height: 1.25;
 }
 .wa-emoji-only {
-  font-size: 40px;
+  font-size: 28px;
 }
 .wa-emoji-only-md {
-  font-size: 32px;
-}
-.wa-emoji-transparent {
-  background: transparent;
-  box-shadow: none;
-}
-.wa-emoji-transparent.wa-bubble-tail-in::before,
-.wa-emoji-transparent.wa-bubble-tail-out::before {
-  display: none;
+  font-size: 24px;
 }
 
 /* ---------- virtualizer ----------------------------------------------------
