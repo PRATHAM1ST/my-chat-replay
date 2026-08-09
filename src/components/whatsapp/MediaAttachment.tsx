@@ -170,7 +170,7 @@ function VoiceNote({ url, isMe }: { url: string | null; isMe: boolean }) {
  */
 export const MediaAttachment = memo(function MediaAttachment({ msg, client, isMe, onOpen }: Props) {
   const file = msg.file;
-  const { url, failed } = useMediaUrl(file, client);
+  const { url, failed, retry } = useMediaUrl(file, client);
   const [ratio, setRatio] = useState(() => client.ratio(file));
   const label = (file?.split("/").pop() ?? msg.label ?? msg.text) || "Attachment";
 
