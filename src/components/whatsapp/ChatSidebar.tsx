@@ -236,8 +236,9 @@ export function ChatSidebar({
             <AlertDialogTitle>
               {all
                 ? "Clear all chats?"
-                : `Remove "${(confirm && confirm !== "all" && (confirm.chatName || confirm.name)) || ""}"?`}
+                : `Remove "${typeof confirm === "object" && confirm ? confirm.chatName || confirm.name : ""}"?`}
             </AlertDialogTitle>
+
             <AlertDialogDescription>
               {all
                 ? "Every chat disappears from this list, along with its saved names, perspective and reading position. Your export files on this device are not deleted — you can open them again any time."
