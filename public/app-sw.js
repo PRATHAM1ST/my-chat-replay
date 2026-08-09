@@ -21,7 +21,7 @@
  * Storage, so the cache layer stays purely a copy of what the server said.
  */
 
-const VERSION = "v1";
+const VERSION = "v2";
 const SHELL = `shell-${VERSION}`;
 const ASSETS = `assets-${VERSION}`;
 const KEEP = new Set([SHELL, ASSETS]);

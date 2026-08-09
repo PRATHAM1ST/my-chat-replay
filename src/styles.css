@@ -213,8 +213,12 @@
  *   dark   #111b21 surface · #202c33 panel · #0b141a wallpaper · #005c4b out
  * ======================================================================== */
 @theme inline {
+  /* Platform fonts first so every device shows its own WhatsApp face —
+     Segoe on Windows, Helvetica/SF on Apple, ROBOTO on Android (the font the
+     real app renders in). The bundled Inter is only the no-system-font
+     fallback; it must never beat Roboto on a phone. */
   --font-sans:
-    "Segoe UI", "Helvetica Neue", "Inter Var", system-ui, -apple-system, Roboto, Ubuntu,
+    "Segoe UI", "Helvetica Neue", -apple-system, Roboto, "Inter Var", system-ui, Ubuntu,
     "System Emoji", "Noto Color Emoji", sans-serif;
   --font-emoji: "System Emoji", "Noto Color Emoji", sans-serif;
 
@@ -505,6 +509,9 @@
   top: 0;
   left: 0;
   width: 100%;
+  /* full-page capture tools mutate ancestor sizes mid-scroll; rows keep a
+     sane width even if the container briefly reads as zero */
+  min-width: 280px;
   contain: layout style paint;
 }
 

@@ -74,11 +74,17 @@ export class WaClient {
       case "progress":
         this.handlers?.onProgress(d.phase, d.pct);
         break;
-      case "loaded":
+      case "loaded": {
+        // dimensions the worker read straight out of the archive's image
+        // headers — rows never resize when a picture decodes
+        const known = d.ratios as Record<string, { w: number; h: number }> | undefined;
+        if (known)
+          for (const [name, r] of Object.entries(known)) this.rememberRatio(name, r.w, r.h);
         this.loadResolve?.(d.chat as ParsedChat);
         this.loadResolve = null;
         this.loadReject = null;
         break;
+      }
       case "error":
         this.loadReject?.(new Error(d.message));
         this.loadReject = null;

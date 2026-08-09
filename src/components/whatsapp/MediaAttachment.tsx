@@ -63,8 +63,10 @@ function useMediaUrl(file: string | undefined, client: WaClient) {
 }
 
 function Missing({ label }: { label: string }) {
+  // fixed width: the bubble (and a caption wrapping beneath) must never take
+  // their width from this chip's text
   return (
-    <div className="flex items-center gap-2 rounded-[6px] bg-black/[0.04] px-3 py-3 text-[13px] text-wa-meta dark:bg-white/[0.06]">
+    <div className="flex w-[236px] max-w-full items-center gap-2 rounded-[6px] bg-black/[0.04] px-3 py-3 text-[13px] text-wa-meta dark:bg-white/[0.06]">
       <ImageOff className="size-4 shrink-0" />
       <span className="min-w-0 flex-1 truncate" title={label}>
         {label}

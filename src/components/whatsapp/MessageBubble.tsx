@@ -459,7 +459,9 @@ export const MessageBubble = memo(function MessageBubble({
               : "bg-wa-in text-wa-in-foreground",
           !bare && tail ? (isMe ? "wa-bubble-tail-out" : "wa-bubble-tail-in") : "",
           isActive ? "wa-bubble-active" : "",
-          mediaCard ? "p-[3px]" : "px-[9px] py-[5px]",
+          /* the width floor keeps a caption from ever collapsing the bubble
+             while its picture is still coming up */
+          mediaCard ? "min-w-[146px] p-[3px]" : "px-[9px] py-[5px]",
         ]
           .filter(Boolean)
           .join(" ")}

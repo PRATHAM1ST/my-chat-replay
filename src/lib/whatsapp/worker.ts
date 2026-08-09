@@ -85,6 +85,30 @@ async function load(file: File) {
     onProgress: (p) => post({ type: "progress", phase: "Parsing messages", pct: 0.4 + p * 0.45 }),
   });
 
+  // Read every referenced picture's dimensions from its file header now, so
+  // the transcript is laid out right the first time — no bubble ever resizes
+  // when an image finishes decoding. One file is inflated at a time (WhatsApp
+  // stores JPEGs uncompressed, so this is close to a memcpy) and the bytes are
+  // dropped immediately; a huge archive caps the pass rather than stalling.
+  post({ type: "progress", phase: "Measuring pictures", pct: 0.88 });
+  const ratios: Record<string, { w: number; h: number }> = {};
+  if (archive) {
+    const wanted: string[] = [];
+    for (const m of parsed.messages) {
+      if (m.file && m.kind === "image" && /\.(jpe?g|png|gif)$/i.test(m.file)) wanted.push(m.file);
+      if (wanted.length >= 500) break;
+    }
+    for (const name of wanted) {
+      try {
+        const one = unzipSync(archive, { filter: (f) => f.name === name })[name];
+        const dim = one && imageSize(one);
+        if (dim) ratios[name] = dim;
+      } catch {
+        /* an unreadable picture just measures on decode, as before */
+      }
+    }
+  }
+
   post({ type: "progress", phase: "Indexing", pct: 0.9 });
   messages = parsed.messages;
   haystack = new Array(messages.length);
@@ -97,7 +121,43 @@ async function load(file: File) {
     if (m.text.length > 3 && LINK_RE.test(m.text)) linkFlags[i] = 1;
   }
 
-  post({ type: "loaded", chat: parsed });
+  post({ type: "loaded", chat: parsed, ratios });
+}
+
+/** Width and height straight from a JPEG/PNG/GIF header, no decode. */
+function imageSize(b: Uint8Array): { w: number; h: number } | null {
+  if (b.length > 24 && b[0] === 0x89 && b[1] === 0x50) {
+    // PNG: IHDR is always the first chunk
+    const dv = new DataView(b.buffer, b.byteOffset);
+    return { w: dv.getUint32(16), h: dv.getUint32(20) };
+  }
+  if (b.length > 10 && b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46) {
+    // GIF: logical screen descriptor
+    return { w: b[6]! | (b[7]! << 8), h: b[8]! | (b[9]! << 8) };
+  }
+  if (b.length > 4 && b[0] === 0xff && b[1] === 0xd8) {
+    // JPEG: walk the markers to the first start-of-frame
+    let i = 2;
+    while (i + 9 < b.length) {
+      if (b[i] !== 0xff) {
+        i++;
+        continue;
+      }
+      const m = b[i + 1]!;
+      if (m === 0xff) {
+        i++;
+        continue;
+      }
+      if (m === 0xd8 || (m >= 0xd0 && m <= 0xd9) || m === 0x01) {
+        i += 2;
+        continue;
+      }
+      const isSOF = m >= 0xc0 && m <= 0xcf && m !== 0xc4 && m !== 0xc8 && m !== 0xcc;
+      if (isSOF) return { w: (b[i + 7]! << 8) | b[i + 8]!, h: (b[i + 5]! << 8) | b[i + 6]! };
+      i += 2 + ((b[i + 2]! << 8) | b[i + 3]!);
+    }
+  }
+  return null;
 }
 
 function scopeMatches(kind: MsgKind, index: number, scope: SearchScope) {
