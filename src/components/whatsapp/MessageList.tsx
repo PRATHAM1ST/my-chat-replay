@@ -1,8 +1,9 @@
-import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { ChevronDown } from "lucide-react";
 import { dayKey, formatDay, nameColor } from "@/lib/whatsapp/format";
 import { charsPerLine, estimateRow } from "@/lib/whatsapp/layout";
+import { buildMentionRegex } from "@/lib/whatsapp/mentions";
 import type { WaClient } from "@/lib/whatsapp/client";
 import type { Msg } from "@/lib/whatsapp/types";
 import { MessageBubble } from "./MessageBubble";
@@ -44,6 +45,7 @@ interface RowProps {
   isActive: boolean;
   isStarred: boolean;
   onToggleStar: (index: number) => void;
+  mentionRe: RegExp | null;
   onOpenMedia: (msg: Msg, url: string) => void;
 }
 
@@ -69,6 +71,7 @@ const Row = memo(function Row({
   isActive,
   isStarred,
   onToggleStar,
+  mentionRe,
   onOpenMedia,
 }: RowProps) {
   const newDay = prevTs === null || dayKey(prevTs) !== dayKey(msg.ts);
@@ -93,6 +96,7 @@ const Row = memo(function Row({
         isActive={isActive}
         isStarred={isStarred}
         onToggleStar={onToggleStar}
+        mentionRe={mentionRe}
         tail={newGroup}
         client={client}
         onOpenMedia={onOpenMedia}
@@ -119,6 +123,7 @@ export function MessageList({
   const parentRef = useRef<HTMLDivElement>(null);
   const [atBottom, setAtBottom] = useState(true);
   const [topDay, setTopDay] = useState<string | null>(null);
+  const mentionRe = useMemo(() => buildMentionRegex(senders), [senders]);
   // Text wraps at a width the estimator can only know by measuring the pane.
   const [cpl, setCpl] = useState(() => charsPerLine(0));
   const group = senders.length > 2;
@@ -352,6 +357,7 @@ export function MessageList({
                   isActive={activeIndex === msg.i}
                   isStarred={starredSet.has(msg.i)}
                   onToggleStar={onToggleStar}
+                  mentionRe={mentionRe}
                   onOpenMedia={onOpenMedia}
                 />
               </div>

@@ -3,6 +3,7 @@ import { CheckCheck, ChevronDown, Copy, Share2, Star, StarOff } from "lucide-rea
 import { formatDay, formatTime } from "@/lib/whatsapp/format";
 import type { WaClient } from "@/lib/whatsapp/client";
 import type { Msg } from "@/lib/whatsapp/types";
+import { splitMentions } from "@/lib/whatsapp/mentions";
 import { MediaAttachment } from "./MediaAttachment";
 import { useLongPress } from "./useLongPress";
 import { Emoji, Menu, MenuContent, MenuItem, MenuTrigger } from "./ui";
@@ -20,6 +21,8 @@ interface Props {
   tail: boolean;
   isStarred: boolean;
   onToggleStar: (index: number) => void;
+  /** compiled from the participant list; null when the chat has no names */
+  mentionRe: RegExp | null;
   client: WaClient;
   onOpenMedia: (msg: Msg, url: string) => void;
 }
@@ -48,14 +51,52 @@ function Highlighted({ text, query }: { text: string; query: string }) {
 
 const URL_RE = /(https?:\/\/[^\s<>()]+|www\.[^\s<>()]+)/g;
 
-/** Renders message text with clickable links, keeping search highlighting. */
-function Body({ text, query }: { text: string; query: string }) {
+/** Plain text with @mentions coloured the way WhatsApp colours them. */
+function WithMentions({
+  text,
+  query,
+  mentionRe,
+}: {
+  text: string;
+  query: string;
+  mentionRe: RegExp | null;
+}) {
+  const segs = splitMentions(text, mentionRe);
+  if (segs.length === 1 && !segs[0]?.mention) return <Highlighted text={text} query={query} />;
+  return (
+    <>
+      {segs.map((seg, i) =>
+        seg.mention ? (
+          <span key={i} className="wa-mention font-medium text-wa-teal dark:text-wa-green">
+            <Highlighted text={seg.text} query={query} />
+          </span>
+        ) : (
+          <Highlighted key={i} text={seg.text} query={query} />
+        ),
+      )}
+    </>
+  );
+}
+
+/** Message text with clickable links, coloured mentions and search marks. */
+function Body({
+  text,
+  query,
+  mentionRe,
+}: {
+  text: string;
+  query: string;
+  mentionRe: RegExp | null;
+}) {
   const out: React.ReactNode[] = [];
   let last = 0;
   let k = 0;
   for (const m of text.matchAll(URL_RE)) {
     const at = m.index ?? 0;
-    if (at > last) out.push(<Highlighted key={k++} text={text.slice(last, at)} query={query} />);
+    if (at > last)
+      out.push(
+        <WithMentions key={k++} text={text.slice(last, at)} query={query} mentionRe={mentionRe} />,
+      );
     const raw = m[0];
     out.push(
       <a
@@ -70,7 +111,10 @@ function Body({ text, query }: { text: string; query: string }) {
     );
     last = at + raw.length;
   }
-  if (last < text.length) out.push(<Highlighted key={k++} text={text.slice(last)} query={query} />);
+  if (last < text.length)
+    out.push(
+      <WithMentions key={k++} text={text.slice(last)} query={query} mentionRe={mentionRe} />,
+    );
   return <>{out}</>;
 }
 
@@ -104,6 +148,7 @@ export const MessageBubble = memo(function MessageBubble({
   tail,
   isStarred,
   onToggleStar,
+  mentionRe,
   client,
   onOpenMedia,
 }: Props) {
@@ -235,7 +280,7 @@ export const MessageBubble = memo(function MessageBubble({
                   big === "lg" ? "wa-emoji-only" : big === "md" ? "wa-emoji-only-md" : ""
                 }`}
               >
-                <Body text={msg.text} query={isMatch ? query : ""} />
+                <Body text={msg.text} query={isMatch ? query : ""} mentionRe={mentionRe} />
               </p>
             ) : hasMedia ? null : (
               <p className="text-[14.2px] italic leading-[19px] text-wa-meta">
