@@ -61,6 +61,9 @@ export class WaClient {
    */
   private ratios = new Map<string, { w: number; h: number }>();
 
+  /** False when the source was a bare .txt — attachments can never resolve. */
+  archivePresent = true;
+
   constructor() {
     this.worker = new Worker(new URL("./worker.ts", import.meta.url), {
       type: "module",
@@ -80,6 +83,7 @@ export class WaClient {
         const known = d.ratios as Record<string, { w: number; h: number }> | undefined;
         if (known)
           for (const [name, r] of Object.entries(known)) this.rememberRatio(name, r.w, r.h);
+        this.archivePresent = d.hasArchive !== false;
         this.loadResolve?.(d.chat as ParsedChat);
         this.loadResolve = null;
         this.loadReject = null;

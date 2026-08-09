@@ -121,7 +121,7 @@ async function load(file: File) {
     if (m.text.length > 3 && LINK_RE.test(m.text)) linkFlags[i] = 1;
   }
 
-  post({ type: "loaded", chat: parsed, ratios });
+  post({ type: "loaded", chat: parsed, ratios, hasArchive: !!archive });
 }
 
 /** Width and height straight from a JPEG/PNG/GIF header, no decode. */

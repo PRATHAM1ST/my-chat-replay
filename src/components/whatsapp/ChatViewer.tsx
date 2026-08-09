@@ -177,6 +177,14 @@ export function ChatViewer() {
         );
         setBusy(false);
 
+        // Say it out loud when pictures can never load: a bare .txt export
+        // references its attachments but does not contain them.
+        if (parsed.mediaCount > 0 && !client.archivePresent) {
+          setNotice(
+            "This export is text-only, so its photos aren't inside. Export the chat again with media (as a .zip) to see them.",
+          );
+        }
+
         const now = Date.now();
         const entry: LibraryEntry = {
           id,
