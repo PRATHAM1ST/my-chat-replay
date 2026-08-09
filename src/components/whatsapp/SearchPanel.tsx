@@ -3,6 +3,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   ArrowLeft,
   CalendarDays,
+  CalendarSearch,
   ChevronDown,
   ChevronUp,
   FileText,
@@ -157,10 +158,11 @@ export function SearchPanel({
   }, [active, busy, matches.length, matchPos]);
 
   return (
-    <aside className="wa-slide-in absolute inset-0 z-30 flex min-h-0 flex-col border-l border-wa-divider bg-wa-surface dark:border-transparent md:static md:w-[400px] md:shrink-0 lg:w-[430px]">
+    <aside className="wa-slide-in pointer-events-none absolute inset-0 z-30 flex min-h-0 flex-col border-l border-wa-divider bg-transparent dark:border-transparent md:pointer-events-auto md:static md:w-[400px] md:shrink-0 md:bg-wa-surface lg:w-[430px]">
       {/* Phones get the app's own search bar: one stadium pill holding the
-          back arrow, the field and the jump-to-date calendar. */}
-      <header className="shrink-0 px-4 pb-2 pt-3 md:hidden">
+          back arrow, the field and the jump-to-date calendar — floating over
+          the conversation, which stays visible until a search begins. */}
+      <header className="pointer-events-auto shrink-0 bg-wa-app px-4 pb-2 pt-3 md:hidden">
         <div className="flex h-[47px] items-center gap-1 rounded-full bg-wa-system pl-1.5 pr-1.5">
           <IconButton
             onClick={onClose}
@@ -181,7 +183,7 @@ export function SearchPanel({
             className="grid size-9 shrink-0 cursor-pointer place-items-center rounded-full text-wa-icon transition-colors hover:bg-white/5 dark:text-white"
             title="Jump to date"
           >
-            <CalendarDays className="size-5" />
+            <CalendarSearch className="size-5" />
             <input
               type="date"
               onChange={(e) => onJumpDate(e.target.value)}
@@ -192,7 +194,7 @@ export function SearchPanel({
         </div>
       </header>
 
-      <header className="hidden h-[60px] shrink-0 items-center gap-3 border-b border-wa-divider bg-wa-panel pl-2 pr-3 text-wa-panel-foreground md:flex">
+      <header className="pointer-events-auto hidden h-[60px] shrink-0 items-center gap-3 border-b border-wa-divider bg-wa-panel pl-2 pr-3 text-wa-panel-foreground md:flex">
         <IconButton onClick={onClose} aria-label="Close search">
           <X className="size-5" />
         </IconButton>
@@ -207,7 +209,12 @@ export function SearchPanel({
         </div>
       </header>
 
-      <div className="shrink-0 space-y-2.5 border-b border-wa-divider px-3 py-2 dark:border-transparent md:py-3">
+      <div
+        className={`pointer-events-auto shrink-0 space-y-2.5 border-b border-wa-divider bg-wa-surface px-3 py-2 dark:border-transparent md:block md:py-3 ${
+          /* until a search begins, the phone shows the conversation itself */
+          active ? "" : "hidden"
+        }`}
+      >
         <SearchField
           autoFocus={false}
           value={query}
@@ -286,7 +293,12 @@ export function SearchPanel({
         </div>
       </div>
 
-      <div ref={listRef} className="wa-scroller min-h-0 flex-1 overflow-y-auto">
+      <div
+        ref={listRef}
+        className={`wa-scroller min-h-0 flex-1 overflow-y-auto md:pointer-events-auto md:block md:bg-transparent ${
+          active ? "pointer-events-auto bg-wa-surface" : "hidden"
+        }`}
+      >
         <div className="relative w-full" style={{ height: `${virtualizer.getTotalSize()}px` }}>
           {rows.map((vi) => {
             const gi = matches[vi.index] ?? 0;

@@ -359,7 +359,7 @@
   --wa-highlight-foreground: oklch(0.9436 0.0051 228.82);
 
   --wa-doodle-color: oklch(0.9436 0.0051 228.82);
-  --wa-doodle-opacity: 0.035;
+  --wa-doodle-opacity: 0.045;
 
   /* group participant name colours — WhatsApp's dark palette. Slot 2 is the
      lavender the app gave the other party in the user's own 1:1 chat. */
@@ -423,12 +423,14 @@
   inset: 0;
   pointer-events: none;
   background-color: var(--wa-doodle-color);
-  mask-image: url("/wa-wallpaper.svg");
+  /* WhatsApp's own doodle tile, reduced to an alpha mask so each theme
+     paints it in its measured ink over its measured base */
+  mask-image: url("/wa-doodle.png");
   mask-repeat: repeat;
-  mask-size: 400px 400px;
-  -webkit-mask-image: url("/wa-wallpaper.svg");
+  mask-size: 540px auto;
+  -webkit-mask-image: url("/wa-doodle.png");
   -webkit-mask-repeat: repeat;
-  -webkit-mask-size: 400px 400px;
+  -webkit-mask-size: 540px auto;
   opacity: var(--wa-doodle-opacity);
 }
 
@@ -439,7 +441,7 @@
  * ------------------------------------------------------------------------ */
 .wa-bubble {
   position: relative;
-  border-radius: 8px;
+  border-radius: 11px;
   box-shadow: var(--wa-shadow-bubble);
 }
 .wa-bubble-tail-in {

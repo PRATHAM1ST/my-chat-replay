@@ -621,11 +621,11 @@ export const MessageBubble = memo(function MessageBubble({
               e.stopPropagation();
               onReact(msg.i, null);
             }}
-            className={`absolute -bottom-[21px] z-[5] grid size-[23px] cursor-pointer place-items-center rounded-full border-2 border-wa-chat bg-wa-in shadow-[var(--wa-shadow-bubble)] transition-transform hover:scale-110 ${
+            className={`absolute -bottom-[22px] z-[5] grid size-6 cursor-pointer place-items-center rounded-full border-2 border-wa-chat bg-wa-in shadow-[var(--wa-shadow-bubble)] transition-transform hover:scale-110 ${
               isMe ? "right-2" : "left-2"
             }`}
           >
-            <span className="wa-emoji text-[13px] leading-none">{reaction}</span>
+            <span className="wa-emoji text-[14px] leading-none">{reaction}</span>
           </button>
         )}
       </div>
