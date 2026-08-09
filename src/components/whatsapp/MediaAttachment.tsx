@@ -14,39 +14,34 @@ interface Props {
 /**
  * Resolves one attachment out of the archive.
  *
- * The request is deferred by a frame or two: flinging through a long chat
- * mounts and unmounts hundreds of media rows, and firing an extraction for
- * every one of them starves the worker so the pictures that actually stopped
- * on screen arrive last.
+ * Everything is local and nothing is ever evicted, so a url that has already
+ * been extracted is handed over synchronously and the bubble paints with no
+ * skeleton at all.
  */
 function useMediaUrl(file: string | undefined, client: WaClient) {
-  const [url, setUrl] = useState<string | null>(() => null);
+  const [url, setUrl] = useState<string | null>(() => client.ready(file)?.url ?? null);
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     if (!file) return;
     setFailed(false);
+    const cached = client.ready(file);
+    if (cached) {
+      setUrl(cached.url);
+      return;
+    }
     let alive = true;
-    // Keeping the entry pinned while this row is mounted stops the LRU from
-    // revoking a url that is still on screen — that is what leaves a bubble
-    // showing an empty box.
-    client.retain(file);
-    const timer = setTimeout(() => {
-      client
-        .media(file)
-        .then((r) => alive && setUrl(r.url))
-        .catch(() => alive && setFailed(true));
-    }, 90);
+    client
+      .media(file)
+      .then((r) => alive && setUrl(r.url))
+      .catch(() => alive && setFailed(true));
     return () => {
       alive = false;
-      clearTimeout(timer);
-      client.release(file);
-      setUrl(null);
     };
   }, [file, client, attempt]);
 
-  /** The url went stale (revoked or undecodable) — drop it and extract again. */
+  /** The url went stale (undecodable) — drop it and extract again. */
   const retry = useCallback(() => {
     if (!file) return;
     client.forget(file);
@@ -57,7 +52,6 @@ function useMediaUrl(file: string | undefined, client: WaClient) {
 
   return { url, failed, retry };
 }
-
 
 function Missing({ label }: { label: string }) {
   return (
@@ -246,7 +240,6 @@ export const MediaAttachment = memo(function MediaAttachment({ msg, client, isMe
           )
         ) : (
           <span className="wa-media-skeleton absolute inset-0 block" />
-
         )}
 
         {video && (

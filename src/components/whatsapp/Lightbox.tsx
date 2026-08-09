@@ -62,7 +62,7 @@ export function Lightbox({ items, index, client, senders, onIndex, onClose }: Pr
   }, [index, go, onClose]);
 
   useEffect(() => {
-    setUrl(null);
+    setUrl(client && msg?.file ? (client.ready(msg.file)?.url ?? null) : null);
     const file = msg?.file;
     if (!file || !client) return;
     let alive = true;
@@ -70,10 +70,19 @@ export function Lightbox({ items, index, client, senders, onIndex, onClose }: Pr
       .media(file)
       .then((r) => alive && setUrl(r.url))
       .catch(() => undefined);
+    // Warm the neighbours so arrowing through the carousel is instant.
+    if (index !== null) {
+      const around: (string | undefined)[] = [];
+      for (let d = 1; d <= 6; d++) {
+        around.push(items[(index + d) % items.length]?.file);
+        around.push(items[(index - d + items.length) % items.length]?.file);
+      }
+      client.prefetch(around);
+    }
     return () => {
       alive = false;
     };
-  }, [msg?.file, client]);
+  }, [msg?.file, client, index, items]);
 
   if (index === null || !msg) return null;
   const name = msg.s >= 0 ? (senders[msg.s] ?? "") : "";
