@@ -1,8 +1,9 @@
-import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useRef, useState } from "react";
 import { Download, FileText, ImageOff, Mic, Pause, Play, Video } from "lucide-react";
 import type { WaClient } from "@/lib/whatsapp/client";
 import { mediaBox } from "@/lib/whatsapp/layout";
 import type { Msg } from "@/lib/whatsapp/types";
+import { useMediaUrl } from "./useMediaUrl";
 
 interface Props {
   msg: Msg;
@@ -11,81 +12,6 @@ interface Props {
   onOpen: (msg: Msg, url: string) => void;
 }
 
-/**
- * Resolves one attachment out of the archive.
- *
- * Everything is local and nothing is ever evicted, so a url that has already
- * been extracted is handed over synchronously and the bubble paints with no
- * skeleton at all.
- */
-type Failure = "absent" | "undecodable";
-
-function useMediaUrl(file: string | undefined, client: WaClient) {
-  const [url, setUrl] = useState<string | null>(() => client.ready(file)?.url ?? null);
-  const [failed, setFailed] = useState<Failure | null>(null);
-  const [attempt, setAttempt] = useState(0);
-
-  // Hold the attachment for as long as this bubble is mounted. Nothing the
-  // virtualizer is showing can be reclaimed, so a picture on screen never goes
-  // blank; once the row scrolls away it becomes reclaimable again.
-  useEffect(() => {
-    if (!file) return;
-    client.retain(file);
-    return () => client.release(file);
-  }, [file, client]);
-
-  useEffect(() => {
-    if (!file) return;
-    setFailed(null);
-    const cached = client.ready(file);
-    if (cached) {
-      setUrl(cached.url);
-      return;
-    }
-    let alive = true;
-    client
-      .media(file)
-      .then((r) => alive && setUrl(r.url))
-      // The worker could not hand the bytes over at all: the entry is gone
-      // from the archive, or the archive itself is no longer readable.
-      .catch(() => alive && setFailed("absent"));
-    return () => {
-      alive = false;
-    };
-  }, [file, client, attempt]);
-
-  /**
-   * The element refused the url. Usually that is a blob that went stale, so
-   * the file is extracted again; after a couple of rounds it is the codec, not
-   * the url, and no amount of re-extracting will help. The last url is kept
-   * alive in that case — the bytes are perfectly good, this browser just has
-   * nothing to play them with, and handing them over to save is the one useful
-   * thing left to do.
-   */
-  const retry = useCallback(() => {
-    if (!file) return;
-    if (attempt > 1) {
-      setFailed("undecodable");
-      return;
-    }
-    client.forget(file);
-    setUrl(null);
-    setAttempt((n) => n + 1);
-  }, [client, file, attempt]);
-
-  return { url, failed, retry };
-}
-
-/**
- * Stand-in for an attachment the bubble cannot paint.
- *
- * Two very different things end up here and the reader deserves to know which:
- * a file the export never carried, and a file that is right there in the
- * archive but that this browser will not decode — a .mkv, an .amr voice note,
- * a HEIC photo. Calling the second one "not in export" sends people hunting
- * for a file they already have, so it gets its own wording and, since the
- * bytes exist, a way to open it in something that can.
- */
 function Missing({ label, url }: { label: string; url?: string | null }) {
   // fixed width: the bubble (and a caption wrapping beneath) must never take
   // their width from this chip's text

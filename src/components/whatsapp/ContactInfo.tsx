@@ -6,6 +6,7 @@ import {
   FileText,
   Headphones,
   Image as ImageIcon,
+  ImageOff,
   Link2,
   Lock,
   MessagesSquare,
@@ -18,6 +19,7 @@ import type { WaClient } from "@/lib/whatsapp/client";
 import { formatDay } from "@/lib/whatsapp/format";
 import { LINK_RE, type Msg, type ParsedChat } from "@/lib/whatsapp/types";
 import { Avatar, Chip, Emoji, IconButton } from "./ui";
+import { useMediaUrl } from "./useMediaUrl";
 
 const PAGE = 36;
 
@@ -53,23 +55,10 @@ function MediaThumb({
 }) {
   const ref = useRef<HTMLButtonElement>(null);
   const inView = useInView(ref);
-  const [url, setUrl] = useState<string | null>(null);
-  const [nonce, setNonce] = useState(0);
-
-  useEffect(() => {
-    const file = msg.file;
-    if (!file || !inView) return;
-    let alive = true;
-    client.retain(file);
-    client
-      .media(file)
-      .then((result) => alive && setUrl(result.url))
-      .catch(() => undefined);
-    return () => {
-      alive = false;
-      client.release(file);
-    };
-  }, [client, msg.file, inView, nonce]);
+  // The same claim-and-give-up rule the bubbles follow: a tile whose bytes will
+  // never decode has to stop asking, or it re-extracts the file forever and
+  // takes the worker — and every other picture waiting on it — down with it.
+  const { url, failed, retry } = useMediaUrl(msg.file, client, inView);
 
   return (
     <button
@@ -79,13 +68,24 @@ function MediaThumb({
       aria-label="Open media"
       className="relative aspect-square cursor-pointer overflow-hidden rounded-[3px] bg-black/5 transition-opacity hover:opacity-90 dark:bg-white/5"
     >
-      {url ? (
+      {failed ? (
+        <span
+          className="absolute inset-0 flex flex-col items-center justify-center gap-1 px-1 text-center text-wa-meta"
+          title={msg.label || msg.file || "Attachment"}
+        >
+          <ImageOff className="size-5" />
+          <span className="text-[10px] leading-tight">
+            {failed === "absent" ? "not in export" : "can't preview"}
+          </span>
+        </span>
+      ) : url ? (
         msg.kind === "video" ? (
           <>
             <video
               src={`${url}#t=0.1`}
               muted
               preload="metadata"
+              onError={retry}
               className="size-full object-cover"
             />
             <span className="absolute inset-0 flex items-center justify-center">
@@ -99,12 +99,7 @@ function MediaThumb({
             loading="lazy"
             decoding="async"
             // the LRU may have revoked this url while the tile was parked
-            onError={() => {
-              if (msg.file) client.forget(msg.file);
-              setUrl(null);
-              setNonce((n) => n + 1);
-            }}
-
+            onError={retry}
             className="wa-fade-in size-full object-cover"
           />
         )
