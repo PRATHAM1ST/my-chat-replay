@@ -196,7 +196,6 @@ export function MessageList({
     return () => clearTimeout(id);
   }, [client, messages]);
 
-
   /** Jump to the newest message, retrying until measurements settle. */
   const toBottom = useCallback(
     (behavior: ScrollBehavior = "auto") => {

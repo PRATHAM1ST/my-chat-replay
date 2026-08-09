@@ -84,7 +84,6 @@ export function Lightbox({ items, index, client, senders, onIndex, onClose }: Pr
     };
   }, [msg?.file, client, index, items]);
 
-
   if (index === null || !msg) return null;
   const name = msg.s >= 0 ? (senders[msg.s] ?? "") : "";
 

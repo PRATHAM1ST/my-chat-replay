@@ -36,7 +36,6 @@ export class WaClient {
   private queue: string[] = [];
   private active = 0;
 
-
   /**
    * Natural pixel size of every attachment we have decoded, so a row that
    * scrolls back into view reserves the right height immediately instead of
@@ -179,9 +178,6 @@ export class WaClient {
     this.mediaCache.delete(name);
     if (v) URL.revokeObjectURL(v.url);
   }
-
-
-
 
   destroy() {
     if (this.dead) return;

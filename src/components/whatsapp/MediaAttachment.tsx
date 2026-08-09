@@ -53,8 +53,6 @@ function useMediaUrl(file: string | undefined, client: WaClient) {
   return { url, failed, retry };
 }
 
-
-
 function Missing({ label }: { label: string }) {
   return (
     <div className="flex items-center gap-2 rounded-[6px] bg-black/[0.04] px-3 py-3 text-[13px] text-wa-meta dark:bg-white/[0.06]">
@@ -242,7 +240,6 @@ export const MediaAttachment = memo(function MediaAttachment({ msg, client, isMe
           )
         ) : (
           <span className="wa-media-skeleton absolute inset-0 block" />
-
         )}
 
         {video && (
