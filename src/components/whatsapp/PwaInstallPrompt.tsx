@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Download, X } from "lucide-react";
+import { Download, Share, X, Plus } from "lucide-react";
 import { IconButton } from "./ui";
 
 interface BeforeInstallPromptEvent extends Event {
@@ -17,26 +17,34 @@ function isStandalone() {
   );
 }
 
+function isIos() {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent;
+  return /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+}
+
 export function PwaInstallPrompt() {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
   const [visible, setVisible] = useState(false);
   const [installed, setInstalled] = useState(false);
+  const [ios, setIos] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (isStandalone()) return;
+    setIos(isIos());
 
-    const dismissed = localStorage.getItem(STORAGE_KEY);
-    if (dismissed === "true") return;
+    if (localStorage.getItem(STORAGE_KEY) === "true") return;
 
     const handler = (e: Event) => {
       e.preventDefault();
       setDeferred(e as BeforeInstallPromptEvent);
-      // Show after a short delay so the UI has settled.
-      setTimeout(() => setVisible(true), 800);
+      setVisible(true);
     };
-
     window.addEventListener("beforeinstallprompt", handler);
+
+    // Show the popup regardless of whether the browser offers a native prompt.
+    const timer = setTimeout(() => setVisible(true), 1200);
 
     const onAppInstalled = () => {
       setInstalled(true);
@@ -46,6 +54,7 @@ export function PwaInstallPrompt() {
     window.addEventListener("appinstalled", onAppInstalled);
 
     return () => {
+      clearTimeout(timer);
       window.removeEventListener("beforeinstallprompt", handler);
       window.removeEventListener("appinstalled", onAppInstalled);
     };
@@ -99,21 +108,38 @@ export function PwaInstallPrompt() {
           </IconButton>
         </div>
 
+        {!deferred && (
+          <div className="mt-4 rounded-xl bg-wa-input p-3 text-[13px] leading-relaxed text-wa-meta">
+            {ios ? (
+              <span className="flex flex-wrap items-center gap-1">
+                Tap <Share className="inline size-4" /> Share, then
+                <Plus className="inline size-4" /> “Add to Home Screen”.
+              </span>
+            ) : (
+              <span>
+                Open your browser menu and choose “Install app” / “Add to Home screen” to install.
+              </span>
+            )}
+          </div>
+        )}
+
         <div className="mt-5 flex gap-3">
           <button
             type="button"
             onClick={dismiss}
             className="flex h-10 flex-1 items-center justify-center rounded-full bg-wa-input px-4 text-[14px] font-medium text-wa-meta transition-colors hover:bg-wa-hover"
           >
-            Not now
+            {deferred ? "Not now" : "Got it"}
           </button>
-          <button
-            type="button"
-            onClick={install}
-            className="flex h-10 flex-1 items-center justify-center rounded-full bg-wa-green px-4 text-[14px] font-medium text-white shadow-sm transition-colors hover:bg-wa-teal"
-          >
-            Install
-          </button>
+          {deferred && (
+            <button
+              type="button"
+              onClick={install}
+              className="flex h-10 flex-1 items-center justify-center rounded-full bg-wa-green px-4 text-[14px] font-medium text-white shadow-sm transition-colors hover:bg-wa-teal"
+            >
+              Install
+            </button>
+          )}
         </div>
       </div>
     </div>
