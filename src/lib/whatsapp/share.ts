@@ -41,11 +41,26 @@ export function registerShareTarget(): void {
   });
 }
 
+/**
+ * True when this page load is the tail end of a share. Worth knowing before
+ * anything else starts opening chats: restoring the previous chat at the same
+ * time would leave two archives loading over each other.
+ */
+export function hasPendingShare(): boolean {
+  if (typeof window === "undefined") return false;
+  return new URLSearchParams(window.location.search).has("shared");
+}
+
 /** Reads a file handed over by the share sheet, if this load came from one. */
 export async function takeSharedFile(): Promise<File | null> {
   if (typeof window === "undefined") return null;
   if (!new URLSearchParams(window.location.search).has("shared")) return null;
   try {
+    // The stash only exists inside the worker, so wait for it to be in charge
+    // of this page — on a cold start the redirect can land first.
+    if (!navigator.serviceWorker.controller) {
+      await Promise.race([navigator.serviceWorker.ready, new Promise((r) => setTimeout(r, 3000))]);
+    }
     const res = await fetch(SHARE_KEY);
     if (!res.ok) return null;
     const name = decodeURIComponent(res.headers.get("x-filename") ?? "shared.zip");

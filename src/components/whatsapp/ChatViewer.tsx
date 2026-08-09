@@ -5,9 +5,9 @@ import type { Msg, ParsedChat, SearchScope } from "@/lib/whatsapp/types";
 import {
   clearChats,
   entryId,
+  entryNeedsPermission,
   fileFromEntry,
   getLastId,
-  handlePermission,
   listChats,
   pickArchive,
   putChat,
@@ -15,9 +15,16 @@ import {
   setLastId,
   type LibraryEntry,
 } from "@/lib/whatsapp/library";
+import {
+  QuotaError,
+  hasArchive,
+  requestPersistence,
+  saveArchive,
+  vaultSupported,
+} from "@/lib/whatsapp/vault";
 import { displayNames, getPrefs, savePrefs, type ChatPrefs } from "@/lib/whatsapp/prefs";
 import { onLaunchWithFile } from "@/lib/whatsapp/launch";
-import { registerShareTarget, takeSharedFile } from "@/lib/whatsapp/share";
+import { hasPendingShare, registerShareTarget, takeSharedFile } from "@/lib/whatsapp/share";
 
 import { ChatHeader } from "./ChatHeader";
 import { ChatSidebar } from "./ChatSidebar";
@@ -30,7 +37,7 @@ import { MessageList } from "./MessageList";
 import { NavRail } from "./NavRail";
 import { PwaInstallBanner } from "./PwaInstallBanner";
 import { SearchPanel } from "./SearchPanel";
-
+import { Toast } from "./ui";
 
 const EMPTY = new Int32Array(0);
 
@@ -41,6 +48,14 @@ export function ChatViewer() {
   const [phase, setPhase] = useState("");
   const [pct, setPct] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  /** the chat a failed open can be retried on */
+  const [retry, setRetry] = useState<LibraryEntry | null>(null);
+  const [canShare, setCanShare] = useState(false);
+  const closeChatRef = useRef<(() => void) | null>(null);
+  /** bumped on every open; a load whose token is stale must not touch state */
+  const loadSeq = useRef(0);
+  const sharePending = useRef(hasPendingShare());
 
   const [meIndex, setMeIndex] = useState(0);
   const [dark, setDark] = useState(false);
@@ -85,9 +100,7 @@ export function ChatViewer() {
   const refreshLibrary = useCallback(async () => {
     const all = await listChats();
     const locked = new Set<string>();
-    for (const e of all) {
-      if (!e.handle || (await handlePermission(e.handle)) !== "granted") locked.add(e.id);
-    }
+    for (const e of all) if (await entryNeedsPermission(e)) locked.add(e.id);
     setEntries(all);
     setNeedsPermission(locked);
     return all;
@@ -105,7 +118,9 @@ export function ChatViewer() {
 
   const handleFile = useCallback(
     async (file: File, handle?: FileSystemFileHandle) => {
+      const seq = ++loadSeq.current;
       setError(null);
+      setRetry(null);
       setBusy(true);
       setPhase("Reading file");
       setPct(0.02);
@@ -115,10 +130,17 @@ export function ChatViewer() {
       try {
         const parsed = await client.load(file, {
           onProgress: (p, v) => {
+            if (loadSeq.current !== seq) return;
             setPhase(p);
             setPct(v);
           },
         });
+        // Another archive started opening while this one was parsing — a
+        // shared file arriving on top of the restored chat, say. Newest wins.
+        if (loadSeq.current !== seq) {
+          client.destroy();
+          return;
+        }
         if (!parsed.messages.length) {
           throw new Error("No messages could be read from this export.");
         }
@@ -138,7 +160,7 @@ export function ChatViewer() {
         setBusy(false);
 
         const now = Date.now();
-        await putChat({
+        const entry: LibraryEntry = {
           id,
           name: file.name,
           size: file.size,
@@ -148,32 +170,62 @@ export function ChatViewer() {
           msgCount: parsed.messages.length,
           mediaCount: parsed.mediaCount,
           ...(handle ? { handle } : {}),
-        });
+        };
+        await putChat(entry);
         setLastId(id);
         setActiveId(id);
         void refreshLibrary();
+
+        // Keep our own copy so this chat reopens without a permission prompt —
+        // in the background, because the transcript is already on screen.
+        void (async () => {
+          if (!vaultSupported || (await hasArchive(id))) {
+            if (await hasArchive(id)) await putChat({ ...entry, stored: true });
+            void refreshLibrary();
+            return;
+          }
+          try {
+            await requestPersistence();
+            await saveArchive(id, file);
+            await putChat({ ...entry, stored: true });
+          } catch (e) {
+            // Out of room, or a browser that will not keep one. The handle
+            // still works, so this only costs the odd permission prompt.
+            if (e instanceof QuotaError) setNotice(e.message);
+          }
+          void refreshLibrary();
+        })();
       } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
-        setBusy(false);
         client.destroy();
+        if (loadSeq.current !== seq) return;
         clientRef.current = null;
+        setBusy(false);
+        if ((e as Error)?.name !== "AbortError") {
+          setError(e instanceof Error ? e.message : String(e));
+        }
       }
-      setBusyId(null);
+      if (loadSeq.current === seq) setBusyId(null);
     },
     [refreshLibrary, resetSearch],
   );
 
+  useEffect(() => {
+    setCanShare(typeof navigator !== "undefined" && typeof navigator.canShare === "function");
+  }, []);
+
   const openEntry = useCallback(
     async (entry: LibraryEntry) => {
       setError(null);
+      setRetry(null);
       setBusyId(entry.id);
       const file = await fileFromEntry(entry, { request: true });
       if (!file) {
         setBusyId(null);
+        setRetry(entry);
         setError(
           entry.handle
-            ? "Access to that file was not granted. Pick it again to continue."
-            : "This browser can't reopen files by itself — drop the archive again.",
+            ? "Access to that file was not granted — allow it, or open the archive again."
+            : "The copy of this chat is gone. Open the archive again to bring it back.",
         );
         void refreshLibrary();
         return;
@@ -183,13 +235,45 @@ export function ChatViewer() {
     [handleFile, refreshLibrary],
   );
 
-  const removeEntry = useCallback(
-    async (entry: LibraryEntry) => {
-      await removeChat(entry.id);
+  const removeEntries = useCallback(
+    async (list: LibraryEntry[]) => {
+      for (const entry of list) {
+        await removeChat(entry.id);
+        if (entry.id === activeId) closeChatRef.current?.();
+      }
       void refreshLibrary();
     },
-    [refreshLibrary],
+    [refreshLibrary, activeId],
   );
+
+  /**
+   * Hand the archives themselves to the OS share sheet — the same files the
+   * user gave us, so a chat can be passed on to another app or device.
+   */
+  const shareEntries = useCallback(async (list: LibraryEntry[]) => {
+    const files: File[] = [];
+    for (const entry of list.slice(0, 8)) {
+      const file = await fileFromEntry(entry, { request: true });
+      if (file) files.push(file);
+    }
+    if (!files.length) {
+      setError("Those chats have no copy on this device to share.");
+      return;
+    }
+    if (!navigator.canShare?.({ files })) {
+      setError("This browser can't share files. Open the chat and use Download instead.");
+      return;
+    }
+    try {
+      await navigator.share({
+        files,
+        title: files.length === 1 ? (list[0]?.chatName ?? "Chat export") : "Chat exports",
+      });
+    } catch (e) {
+      // the user backing out of the share sheet is not a failure
+      if ((e as Error)?.name !== "AbortError") setError("Sharing was interrupted.");
+    }
+  }, []);
 
   const addArchive = useCallback(async () => {
     const picked = await pickArchive();
@@ -197,17 +281,18 @@ export function ChatViewer() {
     else fallbackInput.current?.click();
   }, [handleFile]);
 
-  // Load the library and silently reopen the last chat when access is still granted.
+  // Reopen the last chat on load — but only when doing so is silent. Anything
+  // that would raise a permission prompt waits for the user to tap the chat.
   const booted = useRef(false);
   useEffect(() => {
     if (booted.current) return;
     booted.current = true;
     void (async () => {
       const all = await refreshLibrary();
-      const lastId = getLastId();
-      const last = all.find((e) => e.id === lastId);
-      if (!last?.handle) return;
-      if ((await handlePermission(last.handle)) !== "granted") return;
+      // A share (or an OS "open with") is already bringing its own archive.
+      if (sharePending.current || loadSeq.current > 0) return;
+      const last = all.find((e) => e.id === getLastId());
+      if (!last || (await entryNeedsPermission(last))) return;
       const file = await fileFromEntry(last);
       if (file) {
         setBusyId(last.id);
@@ -323,7 +408,6 @@ export function ChatViewer() {
     [prefs.scrollIndex, prefs.scrollOffset, prefs.atBottom],
   );
 
-
   const changeMe = useCallback(
     (i: number) => {
       setMeIndex(i);
@@ -408,13 +492,13 @@ export function ChatViewer() {
     void refreshLibrary();
   }, [refreshLibrary, resetSearch]);
 
+  closeChatRef.current = closeChat;
+
   /** Forget every chat we know about — the archives themselves stay untouched. */
   const clearAll = useCallback(async () => {
     await clearChats();
     closeChat();
   }, [closeChat]);
-
-
 
   const toggleSearch = useCallback(() => {
     setSearchOpen((open) => {
@@ -451,7 +535,6 @@ export function ChatViewer() {
       </>
     );
   }
-
 
   const client = clientRef.current;
   const hasChat = !!chat && !!client;
@@ -491,8 +574,10 @@ export function ChatViewer() {
           busyId={busyId}
           onAdd={() => void addArchive()}
           onOpen={(entry) => void openEntry(entry)}
-          onRemove={(entry) => void removeEntry(entry)}
+          onRemove={(list) => void removeEntries(list)}
+          onShare={(list) => void shareEntries(list)}
           onClearAll={() => void clearAll()}
+          canShare={canShare}
 
           dark={dark}
           onToggleDark={() => setDark((value) => !value)}
@@ -530,7 +615,6 @@ export function ChatViewer() {
               onOpenMedia={(msg) => openMedia(msg)}
               restore={restore}
               onPosition={savePosition}
-
             />
           </>
         ) : (
@@ -597,6 +681,18 @@ export function ChatViewer() {
         onIndex={setLightboxIdx}
         onClose={() => setLightboxIdx(null)}
       />
+
+      {error && (
+        <Toast
+          message={error}
+          {...(retry ? { actionLabel: "Try again", onAction: () => void openEntry(retry) } : {})}
+          onDismiss={() => {
+            setError(null);
+            setRetry(null);
+          }}
+        />
+      )}
+      {!error && notice && <Toast message={notice} tone="info" onDismiss={() => setNotice(null)} />}
 
       <PwaInstallBanner />
     </main>

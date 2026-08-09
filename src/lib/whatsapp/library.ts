@@ -1,19 +1,22 @@
 /**
  * Local chat library.
  *
- * Browsers never expose a file's real path, but the File System Access API
- * gives us a *handle* that can be stored in IndexedDB and re-opened later
- * (usually without re-picking the file). We keep one entry per archive so the
- * app behaves like a chat list: pick once, come back, tap to reopen.
+ * One entry per archive, so the app behaves like a chat list: open once, come
+ * back, tap to reopen.
  *
- * Nothing leaves the device — IndexedDB holds the handle + a little metadata,
- * never the archive contents.
+ * Two things can point at an archive. The vault holds our own copy of the
+ * bytes and needs no permission, so it is always tried first — that is what
+ * makes reopening silent and what lets a file handed over by the share sheet
+ * (which carries no handle) be reopened at all. The FileSystemFileHandle is
+ * the fallback for browsers with no vault, and it is the one that prompts.
+ *
+ * Nothing leaves the device.
  */
 
 import { clearAllPrefs, clearPrefs } from "./prefs";
+import { clearVault, deleteArchive, hasArchive, loadArchive } from "./vault";
 
 declare global {
-
   interface FileSystemFileHandle {
     queryPermission?: (d: { mode: "read" | "readwrite" }) => Promise<PermissionState>;
     requestPermission?: (d: { mode: "read" | "readwrite" }) => Promise<PermissionState>;
@@ -37,6 +40,8 @@ export interface LibraryEntry {
   mediaCount?: number;
   /** FileSystemFileHandle when the browser supports it */
   handle?: FileSystemFileHandle;
+  /** a copy of the archive lives in the vault, so no permission is needed */
+  stored?: boolean;
 }
 
 const DB = "wa-library";
@@ -94,8 +99,9 @@ export async function removeChat(id: string) {
   } catch {
     /* ignore */
   }
-  // The archive on disk is never touched — we only forget our pointer to it
-  // and everything we stored about the chat.
+  // The user's own archive on disk is never touched — we drop our copy of it,
+  // our pointer to it, and everything we stored about the chat.
+  await deleteArchive(id);
   clearPrefs(id);
   if (getLastId() === id) setLastId(null);
 }
@@ -106,10 +112,10 @@ export async function clearChats() {
   } catch {
     /* ignore */
   }
+  await clearVault();
   clearAllPrefs();
   setLastId(null);
 }
-
 
 export function getLastId(): string | null {
   try {
@@ -142,11 +148,29 @@ export async function handlePermission(handle: FileSystemFileHandle): Promise<Pe
   }
 }
 
-/** Re-open an archive from a stored handle. Prompts only when needed. */
+/**
+ * Whether opening this entry will put a permission prompt in the user's way.
+ * Our own copy never does; a bare handle does until the browser says granted.
+ */
+export async function entryNeedsPermission(entry: LibraryEntry): Promise<boolean> {
+  if (entry.stored && (await hasArchive(entry.id))) return false;
+  if (!entry.handle) return true;
+  return (await handlePermission(entry.handle)) !== "granted";
+}
+
+/**
+ * Re-open an archive. The vault copy is tried first and never prompts; the
+ * handle is only touched when there is no copy to read.
+ */
 export async function fileFromEntry(
   entry: LibraryEntry,
   { request = false } = {},
 ): Promise<File | null> {
+  if (entry.stored) {
+    const copy = await loadArchive(entry.id, entry.name);
+    if (copy) return copy;
+  }
+
   const handle = entry.handle;
   if (!handle) return null;
   let perm = await handlePermission(handle);

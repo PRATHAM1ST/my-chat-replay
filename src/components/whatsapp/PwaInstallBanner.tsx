@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from "react";
 import { Share, X, Plus } from "lucide-react";
 import { Logo } from "./Logo";
 
-
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
@@ -79,7 +78,10 @@ export function PwaInstallBanner() {
 
           <p className="min-w-0 flex-1 text-[13.5px] leading-snug">
             Install Chat Replay as an app
-            <span className="hidden text-wa-meta sm:inline"> — opens exports faster, works offline</span>
+            <span className="hidden text-wa-meta sm:inline">
+              {" "}
+              — opens exports faster, works offline
+            </span>
           </p>
           <button
             type="button"

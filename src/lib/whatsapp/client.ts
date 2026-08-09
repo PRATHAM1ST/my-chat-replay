@@ -142,7 +142,17 @@ export class WaClient {
   }
 
   destroy() {
+    if (this.dead) return;
     this.dead = true;
+    // Terminating the worker silently strands anything still in flight, and a
+    // load that never settles leaves the UI stuck on "Reading file" forever.
+    const gone = new DOMException("The chat was closed before it finished loading.", "AbortError");
+    this.loadReject?.(gone);
+    this.loadResolve = null;
+    this.loadReject = null;
+    for (const p of this.pending.values()) p.reject(gone);
+    this.pending.clear();
+    this.inflight.clear();
     for (const v of this.mediaCache.values()) URL.revokeObjectURL(v.url);
     this.mediaCache.clear();
     this.ratios.clear();

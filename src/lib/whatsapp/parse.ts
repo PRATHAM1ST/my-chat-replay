@@ -1,9 +1,25 @@
 import { kindFromFileName, type Msg, type MsgKind, type ParsedChat } from "./types";
 
 // Matches both iOS "[12/03/2024, 14:22:01] Name: text" and
-// Android "12/03/24, 2:22 pm - Name: text" line headers.
+// Android "12/03/24, 2:22 pm - Name: text" line headers. The meridiem allows a
+// space inside it because Spanish and Portuguese exports write "2:22 p. m.".
 const HEAD =
-  /^\[?(\d{1,4})[./-](\d{1,2})[./-](\d{2,4}),?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\s*([APap])\.?[Mm]\.?)?\]?(?:\s*-)?\s*([\s\S]*)$/;
+  /^\[?(\d{1,4})[./-](\d{1,2})[./-](\d{2,4}),?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\s*([APap])\.?\s?[Mm]\.?)?\]?(?:\s*-)?\s*([\s\S]*)$/;
+
+/**
+ * Is this prefix plausibly a participant rather than the middle of a sentence?
+ *
+ * System lines carry no "Name:" prefix, but plenty of them quote a colon —
+ * `Ann changed the subject to "Trip: Manali"` — and a naive split turns the
+ * whole clause into a participant who then owns a bogus one-off message. Real
+ * names are short, few words and never quoted.
+ */
+const QUOTES = /["'“”„«»]/;
+
+function nameLike(candidate: string): boolean {
+  if (candidate.length > 40 || QUOTES.test(candidate)) return false;
+  return candidate.split(/\s+/).length <= 5;
+}
 
 const ATTACHED_IOS = /<attached:\s*([^>]+)>/i;
 const ATTACHED_ANDROID = /^(.+?)\s*\((?:file attached|attached)\)$/i;
@@ -19,6 +35,7 @@ function detectDayFirst(lines: string[]): boolean {
   for (let i = 0; i < lines.length; i++) {
     const m = HEAD.exec(clean(lines[i] ?? ""));
     if (!m) continue;
+    if ((m[1] ?? "").length === 4) continue; // year-first: order is unambiguous
     const a = Number(m[1]);
     const b = Number(m[2]);
     if (a > 12) return true;
@@ -153,10 +170,14 @@ export function parseChat(raw: string, opts: ParseOptions = {}): ParsedChat {
 
     const n1 = Number(m[1]);
     const n2 = Number(m[2]);
-    let year = Number(m[3]);
+    const n3 = Number(m[3]);
+    // A four-digit leading field can only be a year, which also fixes the
+    // order of the two that follow: 2024-03-12 is year, month, day.
+    const isoish = (m[1] ?? "").length === 4;
+    let year = isoish ? n1 : n3;
     if (year < 100) year += 2000;
-    const day = dayFirst ? n1 : n2;
-    const month = dayFirst ? n2 : n1;
+    const day = isoish ? n3 : dayFirst ? n1 : n2;
+    const month = isoish ? n2 : dayFirst ? n2 : n1;
     let hour = Number(m[4]);
     const min = Number(m[5]);
     const sec = m[6] ? Number(m[6]) : 0;
@@ -167,8 +188,11 @@ export function parseChat(raw: string, opts: ParseOptions = {}): ParsedChat {
 
     const rest = m[8] ?? "";
     const sm = /^([^:\n]{1,80}?):\s([\s\S]*)$/.exec(rest);
-    if (sm) {
-      const name = (sm[1] ?? "").trim();
+    const candidate = sm ? (sm[1] ?? "").trim() : "";
+    // Someone we have already seen speak is a participant whatever they are
+    // called; anyone new has to look like a name rather than a sentence.
+    if (sm && (senderIdx.has(candidate) || nameLike(candidate))) {
+      const name = candidate;
       let idx = senderIdx.get(name);
       if (idx === undefined) {
         idx = senders.length;

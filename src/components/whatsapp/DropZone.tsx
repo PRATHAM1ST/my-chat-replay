@@ -3,7 +3,6 @@ import { FileArchive, LockKeyhole, MessageSquare, Search, Sparkles, Upload } fro
 import { pickArchive, supportsHandles, type LibraryEntry } from "@/lib/whatsapp/library";
 import { Logo } from "./Logo";
 
-
 interface Props {
   onFile: (file: File, handle?: FileSystemFileHandle) => void;
   busy: boolean;

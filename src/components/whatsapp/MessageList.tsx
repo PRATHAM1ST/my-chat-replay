@@ -30,7 +30,6 @@ interface Props {
   onPosition?: (pos: ScrollPosition) => void;
 }
 
-
 interface RowProps {
   msg: Msg;
   prevTs: number | null;
@@ -107,7 +106,6 @@ export function MessageList({
   restore,
   onPosition,
 }: Props) {
-
   const parentRef = useRef<HTMLDivElement>(null);
   const [atBottom, setAtBottom] = useState(true);
   const [topDay, setTopDay] = useState<string | null>(null);
@@ -227,7 +225,6 @@ export function MessageList({
     settle();
   }, [messages, toBottom, virtualizer]);
 
-
   useEffect(() => {
     if (!scrollTarget) return;
     const id = requestAnimationFrame(() =>
@@ -300,7 +297,6 @@ export function MessageList({
       flush();
     };
   }, [messages, virtualizer]);
-
 
   return (
     <div className="wa-doodle relative flex min-h-0 flex-1">

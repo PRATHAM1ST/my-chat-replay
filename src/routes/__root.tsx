@@ -11,6 +11,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { stripHostBadge } from "../lib/strip-badge";
 
 function NotFoundComponent() {
   return (
@@ -130,6 +131,9 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  // The published page is served with a hosting badge welded on; take it off.
+  useEffect(() => stripHostBadge(), []);
 
   return (
     <QueryClientProvider client={queryClient}>

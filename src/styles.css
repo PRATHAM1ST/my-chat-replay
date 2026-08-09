@@ -568,3 +568,30 @@
     animation: none;
   }
 }
+
+/* ---------- hosting badge --------------------------------------------------
+ * The published page is served with a floating "edit this app" badge welded
+ * on by the host. `strip-badge.ts` removes it from the DOM; these rules hide
+ * it in the frame before that runs, and keep it hidden if it is ever
+ * re-inserted somewhere the observer cannot reach. Nothing in this app links
+ * to those domains, so none of our own UI can match.
+ * ------------------------------------------------------------------------ */
+a[href*="lovable.dev"],
+a[href*="lovable.app"],
+a[href*="lovableproject.com"],
+a[href*="gpteng.co"],
+a[href*="gptengineer.app"],
+iframe[src*="lovable.dev"],
+iframe[src*="lovable.app"],
+iframe[src*="gpteng.co"],
+[id*="lovable" i],
+[class*="lovable" i],
+[id*="gpteng" i],
+[class*="gpteng" i],
+[class*="gpt-engineer" i],
+lovable-badge,
+gpt-engineer-badge {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}

@@ -9,7 +9,8 @@
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "test": "node --experimental-strip-types --import ./tests/ts-resolve.mjs --test \"tests/*.test.ts\""
   },
   "dependencies": {
     "@fontsource/noto-color-emoji": "^5.3.0",

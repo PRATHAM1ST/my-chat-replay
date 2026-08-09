@@ -105,6 +105,66 @@ export function Emoji({ text }: { text: string }) {
   return <>{out}</>;
 }
 
+/**
+ * Floating status strip. Failures used to be written into the drop zone, which
+ * is only on screen before the first chat exists — so anything that went wrong
+ * later (a withdrawn permission, a missing copy) failed silently. This says
+ * what happened and offers the one action that fixes it.
+ */
+export function Toast({
+  message,
+  tone = "error",
+  actionLabel,
+  onAction,
+  onDismiss,
+}: {
+  message: string;
+  tone?: "error" | "info";
+  actionLabel?: string;
+  onAction?: () => void;
+  onDismiss: () => void;
+}) {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="wa-fade-in pointer-events-none fixed inset-x-0 top-3 z-[80] flex justify-center px-3"
+    >
+      <div
+        className={cn(
+          "pointer-events-auto flex max-w-[520px] items-center gap-3 rounded-xl px-3.5 py-2.5",
+          "text-[13.5px] shadow-[var(--wa-shadow-float)] ring-1",
+          tone === "error"
+            ? "bg-destructive text-destructive-foreground ring-black/10"
+            : "bg-wa-elevated text-wa-panel-foreground ring-black/5 dark:ring-white/10",
+        )}
+      >
+        <span className="min-w-0 flex-1">{message}</span>
+        {actionLabel && onAction && (
+          <button
+            type="button"
+            onClick={onAction}
+            className={cn(
+              "shrink-0 cursor-pointer rounded-full px-3 py-1 text-[13px] font-semibold",
+              tone === "error" ? "bg-white/20 hover:bg-white/30" : "bg-wa-green text-white",
+            )}
+          >
+            {actionLabel}
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={onDismiss}
+          aria-label="Dismiss"
+          className="shrink-0 cursor-pointer text-[18px] leading-none opacity-70 hover:opacity-100"
+        >
+          ×
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export const Menu = Dropdown.Root;
 export const MenuTrigger = Dropdown.Trigger;
 
