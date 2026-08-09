@@ -198,7 +198,6 @@ export class WaClient {
     for (const v of this.mediaCache.values()) URL.revokeObjectURL(v.url);
     this.mediaCache.clear();
     this.ratios.clear();
-    this.uses.clear();
     this.worker.terminate();
   }
 }
