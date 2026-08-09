@@ -1,4 +1,5 @@
-import { FolderPlus, Images, MessageSquare, Moon, Search, Sun } from "lucide-react";
+import { FolderPlus, Images, Moon, Search, Sun } from "lucide-react";
+import { Logo } from "./Logo";
 import { IconButton } from "./ui";
 
 interface Props {
