@@ -25,7 +25,9 @@ import { DropZone } from "./DropZone";
 import { Lightbox } from "./Lightbox";
 import { MessageList } from "./MessageList";
 import { NavRail } from "./NavRail";
+import { PwaInstallPrompt } from "./PwaInstallPrompt";
 import { SearchPanel } from "./SearchPanel";
+
 
 const EMPTY = new Int32Array(0);
 
