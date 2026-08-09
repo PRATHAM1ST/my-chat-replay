@@ -215,7 +215,6 @@ export function ChatViewer() {
     onLaunchWithFile((file, handle) => void handleFile(file, handle));
   }, [handleFile]);
 
-
   // debounce search input
   useEffect(() => {
     if (query === debounced) return;
