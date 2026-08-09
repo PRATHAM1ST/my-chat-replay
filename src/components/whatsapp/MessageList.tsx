@@ -176,6 +176,27 @@ export function MessageList({
   const items = virtualizer.getVirtualItems();
   const measure = virtualizer.measureElement;
 
+  // Pull attachments in ahead of the reader — nearest rows first — then keep
+  // going through the rest of the transcript in the background. The archive is
+  // local, so there is no reason to wait for a bubble to scroll into view.
+  const first = items[0]?.index ?? 0;
+  const last = items[items.length - 1]?.index ?? 0;
+  useEffect(() => {
+    const near: (string | undefined)[] = [];
+    for (let i = Math.max(0, first - 30); i < Math.min(messages.length, last + 60); i++) {
+      near.push(messages[i]?.file);
+    }
+    client.prefetch(near);
+  }, [client, messages, first, last]);
+
+  useEffect(() => {
+    const id = setTimeout(() => {
+      client.prefetch(messages.map((m) => m.file));
+    }, 1200);
+    return () => clearTimeout(id);
+  }, [client, messages]);
+
+
   /** Jump to the newest message, retrying until measurements settle. */
   const toBottom = useCallback(
     (behavior: ScrollBehavior = "auto") => {
